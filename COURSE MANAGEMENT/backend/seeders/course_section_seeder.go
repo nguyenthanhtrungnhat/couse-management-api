@@ -1,16 +1,20 @@
 package seeders
 
 import (
+	"errors"
+	"log"
+
 	"course-management/config"
 	"course-management/models"
-	"log"
+
+	"gorm.io/gorm"
 )
 
 func SeedCourseSections() {
 	var courses []models.Course
 
 	if err := config.DB.Find(&courses).Error; err != nil {
-		log.Println("❌ Cannot load courses")
+		log.Println("❌ Cannot load courses:", err)
 		return
 	}
 
@@ -35,6 +39,7 @@ func SeedCourseSections() {
 		}
 
 		for _, section := range sections {
+
 			var existing models.CourseSection
 
 			err := config.DB.
@@ -45,16 +50,39 @@ func SeedCourseSections() {
 				).
 				First(&existing).Error
 
+			// Already exists → skip
 			if err == nil {
+				log.Printf(
+					"⏭️ Section already exists: %s",
+					section.Title,
+				)
 				continue
 			}
 
+			// Unexpected database error
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				log.Printf(
+					"❌ Check section %s: %v",
+					section.Title,
+					err,
+				)
+				continue
+			}
+
+			// Not found → create
 			if err := config.DB.Create(&section).Error; err != nil {
-				log.Printf("❌ Section %s: %v", section.Title, err)
+				log.Printf(
+					"❌ Section %s: %v",
+					section.Title,
+					err,
+				)
 				continue
 			}
 
-			log.Printf("✅ Section: %s", section.Title)
+			log.Printf(
+				"✅ Section created: %s",
+				section.Title,
+			)
 		}
 	}
 }
