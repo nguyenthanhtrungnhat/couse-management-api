@@ -9,7 +9,7 @@ type Course struct {
 	Instructor   User      `json:"instructor"`
 
 	CategoryID uuid.UUID `gorm:"type:uuid;index;not null" json:"category_id"`
-	Category   Category   `json:"category"`
+	Category   Category  `json:"category"`
 
 	Title string `gorm:"size:255;not null" json:"title"`
 

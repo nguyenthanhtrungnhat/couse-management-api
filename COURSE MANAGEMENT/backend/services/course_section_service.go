@@ -40,7 +40,7 @@ type CourseSectionService interface {
 
 type courseSectionService struct {
 	sectionRepository repositories.CourseSectionRepository
-	courseRepository   repositories.CourseRepository
+	courseRepository  repositories.CourseRepository
 }
 
 func NewCourseSectionService(
@@ -50,7 +50,7 @@ func NewCourseSectionService(
 
 	return &courseSectionService{
 		sectionRepository: sectionRepository,
-		courseRepository:   courseRepository,
+		courseRepository:  courseRepository,
 	}
 }
 

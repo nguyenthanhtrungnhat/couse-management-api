@@ -19,4 +19,3 @@ func UserRoutes(app fiber.Router) {
 
 	users.Put("/profile", controller.UpdateProfile)
 }
-

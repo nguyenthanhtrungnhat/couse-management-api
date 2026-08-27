@@ -203,10 +203,10 @@ func (s *fileMaterialService) GetMaterialsByLesson(
 	var materials []models.FileMaterial
 
 	err := s.db.
-	Where("lesson_id = ?", lessonID).
-	Order("created_at ASC").
-	Find(&materials).
-	Error
+		Where("lesson_id = ?", lessonID).
+		Order("created_at ASC").
+		Find(&materials).
+		Error
 
 	if err != nil {
 		return nil, err

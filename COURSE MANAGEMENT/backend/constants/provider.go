@@ -3,8 +3,7 @@ package constants
 type Provider string
 
 const (
+	ProviderLocal Provider = "local"
 
-    ProviderLocal Provider = "local"
-
-    ProviderGoogle Provider = "google"
+	ProviderGoogle Provider = "google"
 )

@@ -1,8 +1,8 @@
 package services
 
 import (
-	authDTO "course-management/dto/auth"
 	"course-management/constants"
+	authDTO "course-management/dto/auth"
 	"course-management/models"
 	"course-management/repositories"
 	"course-management/utils"

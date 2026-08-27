@@ -3,10 +3,9 @@ package constants
 type Role string
 
 const (
+	RoleAdmin Role = "admin"
 
-    RoleAdmin Role = "admin"
+	RoleStudent Role = "student"
 
-    RoleStudent Role = "student"
-
-    RoleInstructor Role = "instructor"
+	RoleInstructor Role = "instructor"
 )

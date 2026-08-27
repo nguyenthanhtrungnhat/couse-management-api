@@ -3,10 +3,9 @@ package constants
 type PaymentStatus string
 
 const (
+	PaymentPending PaymentStatus = "pending"
 
-    PaymentPending PaymentStatus = "pending"
+	PaymentSuccess PaymentStatus = "success"
 
-    PaymentSuccess PaymentStatus = "success"
-
-    PaymentFailed PaymentStatus = "failed"
+	PaymentFailed PaymentStatus = "failed"
 )

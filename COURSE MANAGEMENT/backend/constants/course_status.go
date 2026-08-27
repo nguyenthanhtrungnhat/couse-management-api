@@ -3,12 +3,11 @@ package constants
 type CourseStatus string
 
 const (
+	CourseDraft CourseStatus = "draft"
 
-    CourseDraft CourseStatus = "draft"
+	CoursePending CourseStatus = "pending"
 
-    CoursePending CourseStatus = "pending"
+	CoursePublished CourseStatus = "published"
 
-    CoursePublished CourseStatus = "published"
-
-    CourseRejected CourseStatus = "rejected"
+	CourseRejected CourseStatus = "rejected"
 )

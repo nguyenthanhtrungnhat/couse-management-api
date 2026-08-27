@@ -75,4 +75,3 @@ func (ac *AuthController) Login(c *fiber.Ctx) error {
 		result,
 	)
 }
-
