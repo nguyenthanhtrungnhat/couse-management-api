@@ -14,7 +14,7 @@ func FileMaterialRoutes(app fiber.Router) {
 	materials := app.Group("/materials")
 
 	// Authentication required
-	materials.Use(middleware.JWTProtected())
+	materials.Use(middleware.AuthMiddleware)
 
 	// Get materials of a lesson
 	materials.Get(
