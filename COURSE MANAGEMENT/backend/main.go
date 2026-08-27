@@ -23,13 +23,17 @@ func main() {
 
 	app := fiber.New()
 
-	// Register Auth route
+	// Register routes
+
 	routes.AuthRoutes(app)
 
-	// Existing routes
 	routes.SetupCourseRoutes(app)
+
 	routes.SetupCourseSectionRoutes(app)
+
 	routes.SetupLessonRoutes(app)
+
+	routes.FileMaterialRoutes(app)
 
 	// Health check
 	app.Get("/", func(c *fiber.Ctx) error {
