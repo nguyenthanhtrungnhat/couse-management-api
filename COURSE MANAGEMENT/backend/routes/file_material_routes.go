@@ -13,28 +13,22 @@ func FileMaterialRoutes(app fiber.Router) {
 
 	materials := app.Group("/materials")
 
-	// ========================================================
-	// PUBLIC / AUTHENTICATED
-	// ========================================================
-
+	// Authentication required
 	materials.Use(middleware.JWTProtected())
 
-	// Get all materials of a lesson
+	// Get materials of a lesson
 	materials.Get(
 		"/lesson/:lessonId",
 		controller.GetMaterialsByLesson,
 	)
 
-	// Get material detail
+	// Get material by ID
 	materials.Get(
 		"/:id",
 		controller.GetMaterialByID,
 	)
 
-	// ========================================================
-	// INSTRUCTOR ONLY
-	// ========================================================
-
+	// Instructor only
 	instructor := materials.Group(
 		"",
 		middleware.RequireRole("instructor"),
