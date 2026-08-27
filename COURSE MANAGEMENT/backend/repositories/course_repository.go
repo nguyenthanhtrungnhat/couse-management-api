@@ -19,7 +19,12 @@ type CourseRepository interface {
 	FindByInstructor(instructorID uuid.UUID) ([]models.Course, error)
 	FindPublished() ([]models.Course, error)
 
-	Search(keyword string, categoryID *uuid.UUID, page int, limit int) ([]models.Course, int64, error)
+	Search(
+		keyword string,
+		categoryID *uuid.UUID,
+		page int,
+		limit int,
+	) ([]models.Course, int64, error)
 
 	CountByInstructor(instructorID uuid.UUID) (int64, error)
 
@@ -38,33 +43,60 @@ func NewCourseRepository() CourseRepository {
 	}
 }
 
-// Create creates a new course.
+// ============================================================
+// CREATE
+// ============================================================
+
 func (r *courseRepository) Create(course *models.Course) error {
 	return r.db.Create(course).Error
 }
 
-// Update updates an existing course.
+// ============================================================
+// UPDATE
+// ============================================================
+
 func (r *courseRepository) Update(course *models.Course) error {
 	return r.db.Save(course).Error
 }
 
-// Delete soft deletes a course.
+// ============================================================
+// DELETE
+// ============================================================
+
 func (r *courseRepository) Delete(id uuid.UUID) error {
-	return r.db.Delete(&models.Course{}, "id = ?", id).Error
+	return r.db.
+		Delete(&models.Course{}, "id = ?", id).
+		Error
 }
 
-// FindByID finds a course by ID.
-func (r *courseRepository) FindByID(id uuid.UUID) (*models.Course, error) {
+// ============================================================
+// PRELOAD COURSE STRUCTURE
+// ============================================================
 
-	var course models.Course
+func (r *courseRepository) preloadCourse(query *gorm.DB) *gorm.DB {
 
-	err := r.db.
+	return query.
 		Preload("Instructor").
 		Preload("Category").
 		Preload("Sections").
 		Preload("Sections.Lessons").
 		Preload("Sections.Lessons.FileMaterials").
-		Preload("Reviews").
+		Preload("Reviews")
+}
+
+// ============================================================
+// FIND BY ID
+// ============================================================
+
+func (r *courseRepository) FindByID(
+	id uuid.UUID,
+) (*models.Course, error) {
+
+	var course models.Course
+
+	err := r.preloadCourse(
+		r.db,
+	).
 		First(&course, "id = ?", id).
 		Error
 
@@ -75,15 +107,19 @@ func (r *courseRepository) FindByID(id uuid.UUID) (*models.Course, error) {
 	return &course, nil
 }
 
-// FindBySlug finds a course by slug.
-func (r *courseRepository) FindBySlug(slug string) (*models.Course, error) {
+// ============================================================
+// FIND BY SLUG
+// ============================================================
+
+func (r *courseRepository) FindBySlug(
+	slug string,
+) (*models.Course, error) {
+
 	var course models.Course
 
-	err := r.db.
-		Preload("Instructor").
-		Preload("Category").
-		Preload("Sections").
-		Preload("Reviews").
+	err := r.preloadCourse(
+		r.db,
+	).
 		Where("slug = ?", slug).
 		First(&course).
 		Error
@@ -95,16 +131,23 @@ func (r *courseRepository) FindBySlug(slug string) (*models.Course, error) {
 	return &course, nil
 }
 
-// FindByInstructor finds all courses created by an instructor.
+// ============================================================
+// FIND BY INSTRUCTOR
+// ============================================================
+
 func (r *courseRepository) FindByInstructor(
 	instructorID uuid.UUID,
 ) ([]models.Course, error) {
 
 	var courses []models.Course
 
-	err := r.db.
-		Preload("Category").
-		Where("instructor_id = ?", instructorID).
+	err := r.preloadCourse(
+		r.db,
+	).
+		Where(
+			"instructor_id = ?",
+			instructorID,
+		).
 		Order("created_at DESC").
 		Find(&courses).
 		Error
@@ -116,15 +159,21 @@ func (r *courseRepository) FindByInstructor(
 	return courses, nil
 }
 
-// FindPublished finds all published courses.
+// ============================================================
+// FIND PUBLISHED
+// ============================================================
+
 func (r *courseRepository) FindPublished() ([]models.Course, error) {
 
 	var courses []models.Course
 
-	err := r.db.
-		Preload("Instructor").
-		Preload("Category").
-		Where("status = ?", "published").
+	err := r.preloadCourse(
+		r.db,
+	).
+		Where(
+			"status = ?",
+			"published",
+		).
 		Order("created_at DESC").
 		Find(&courses).
 		Error
@@ -136,8 +185,10 @@ func (r *courseRepository) FindPublished() ([]models.Course, error) {
 	return courses, nil
 }
 
-// Search searches published courses with optional category filtering
-// and pagination.
+// ============================================================
+// SEARCH
+// ============================================================
+
 func (r *courseRepository) Search(
 	keyword string,
 	categoryID *uuid.UUID,
@@ -162,9 +213,14 @@ func (r *courseRepository) Search(
 
 	query := r.db.
 		Model(&models.Course{}).
-		Where("status = ?", "published")
+		Where(
+			"status = ?",
+			"published",
+		)
 
+	// Keyword search
 	if keyword != "" {
+
 		search := "%" + keyword + "%"
 
 		query = query.Where(
@@ -174,22 +230,25 @@ func (r *courseRepository) Search(
 		)
 	}
 
+	// Category filter
 	if categoryID != nil {
+
 		query = query.Where(
 			"category_id = ?",
 			*categoryID,
 		)
 	}
 
+	// Count total
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	offset := (page - 1) * limit
 
-	err := query.
-		Preload("Instructor").
-		Preload("Category").
+	err := r.preloadCourse(
+		query,
+	).
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(limit).
@@ -203,7 +262,10 @@ func (r *courseRepository) Search(
 	return courses, total, nil
 }
 
-// CountByInstructor counts courses belonging to an instructor.
+// ============================================================
+// COUNT BY INSTRUCTOR
+// ============================================================
+
 func (r *courseRepository) CountByInstructor(
 	instructorID uuid.UUID,
 ) (int64, error) {
@@ -212,21 +274,32 @@ func (r *courseRepository) CountByInstructor(
 
 	err := r.db.
 		Model(&models.Course{}).
-		Where("instructor_id = ?", instructorID).
+		Where(
+			"instructor_id = ?",
+			instructorID,
+		).
 		Count(&count).
 		Error
 
 	return count, err
 }
 
-// ExistsSlug checks whether a slug already exists.
-func (r *courseRepository) ExistsSlug(slug string) (bool, error) {
+// ============================================================
+// EXISTS SLUG
+// ============================================================
+
+func (r *courseRepository) ExistsSlug(
+	slug string,
+) (bool, error) {
 
 	var count int64
 
 	err := r.db.
 		Model(&models.Course{}).
-		Where("slug = ?", slug).
+		Where(
+			"slug = ?",
+			slug,
+		).
 		Count(&count).
 		Error
 
@@ -237,7 +310,10 @@ func (r *courseRepository) ExistsSlug(slug string) (bool, error) {
 	return count > 0, nil
 }
 
-// UpdateStatus updates the status of a course.
+// ============================================================
+// UPDATE STATUS
+// ============================================================
+
 func (r *courseRepository) UpdateStatus(
 	id uuid.UUID,
 	status string,
@@ -245,8 +321,14 @@ func (r *courseRepository) UpdateStatus(
 
 	result := r.db.
 		Model(&models.Course{}).
-		Where("id = ?", id).
-		Update("status", status)
+		Where(
+			"id = ?",
+			id,
+		).
+		Update(
+			"status",
+			status,
+		)
 
 	if result.Error != nil {
 		return result.Error
