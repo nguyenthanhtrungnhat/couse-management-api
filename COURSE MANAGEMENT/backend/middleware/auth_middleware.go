@@ -1,11 +1,17 @@
 package middleware
 
 import (
+	"os"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+)
+
+const (
+	UserIDKey = "userID"
+	RoleKey   = "role"
 )
 
 func AuthMiddleware(c *fiber.Ctx) error {
@@ -21,7 +27,7 @@ func AuthMiddleware(c *fiber.Ctx) error {
 
 	parts := strings.SplitN(authHeader, " ", 2)
 
-	if len(parts) != 2 || parts[0] != "Bearer" {
+	if len(parts) != 2 || parts[0] != "Bearer" || parts[1] == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
 			"message": "invalid authorization header",
@@ -30,17 +36,24 @@ func AuthMiddleware(c *fiber.Ctx) error {
 
 	tokenString := parts[1]
 
-	secret := []byte("your-secret-key")
+	secret := os.Getenv("JWT_SECRET")
+
+	if secret == "" {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "JWT_SECRET is not configured",
+		})
+	}
 
 	token, err := jwt.Parse(
 		tokenString,
 		func(token *jwt.Token) (interface{}, error) {
 
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			if token.Method != jwt.SigningMethodHS256 {
 				return nil, fiber.ErrUnauthorized
 			}
 
-			return secret, nil
+			return []byte(secret), nil
 		},
 	)
 
@@ -60,9 +73,10 @@ func AuthMiddleware(c *fiber.Ctx) error {
 		})
 	}
 
+	// Get user ID from JWT "sub"
 	sub, ok := claims["sub"].(string)
 
-	if !ok {
+	if !ok || sub == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
 			"message": "user id not found in token",
@@ -78,8 +92,12 @@ func AuthMiddleware(c *fiber.Ctx) error {
 		})
 	}
 
-	// Store authenticated user ID.
-	c.Locals("userID", userID)
+	// Get role
+	role, _ := claims["role"].(string)
+
+	// Store authentication information
+	c.Locals(UserIDKey, userID)
+	c.Locals(RoleKey, role)
 
 	return c.Next()
 }
