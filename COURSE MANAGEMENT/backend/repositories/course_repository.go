@@ -55,15 +55,16 @@ func (r *courseRepository) Delete(id uuid.UUID) error {
 
 // FindByID finds a course by ID.
 func (r *courseRepository) FindByID(id uuid.UUID) (*models.Course, error) {
+
 	var course models.Course
 
 	err := r.db.
 		Preload("Instructor").
 		Preload("Category").
 		Preload("Sections").
-		Preload("Reviews").
-		First(&course, "id = ?", id).
-		Error
+		Preload("Sections.Lessons").
+		Preload("Sections.Lessons.FileMaterials").
+		First(&course, "id = ?", id).Error
 
 	if err != nil {
 		return nil, err
