@@ -64,7 +64,9 @@ func (r *courseRepository) FindByID(id uuid.UUID) (*models.Course, error) {
 		Preload("Sections").
 		Preload("Sections.Lessons").
 		Preload("Sections.Lessons.FileMaterials").
-		First(&course, "id = ?", id).Error
+		Preload("Reviews").
+		First(&course, "id = ?", id).
+		Error
 
 	if err != nil {
 		return nil, err
