@@ -45,6 +45,7 @@ func main() {
 
 	// File Material
 	routes.FileMaterialRoutes(app)
+	routes.SetupEnrollmentRoutes(app)
 
 	// =========================
 	// Health Check
