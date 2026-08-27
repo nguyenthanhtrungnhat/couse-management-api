@@ -5,15 +5,12 @@ import "github.com/google/uuid"
 type LessonProgress struct {
 	BaseModel
 
-	EnrollmentID uuid.UUID `gorm:"type:uuid;index;not null"`
+	EnrollmentID uuid.UUID `gorm:"type:uuid;not null;index"`
+	Enrollment   Enrollment `gorm:"foreignKey:EnrollmentID"`
 
-	LessonID uuid.UUID `gorm:"type:uuid;index;not null"`
+	LessonID uuid.UUID `gorm:"type:uuid;not null;index"`
+	Lesson   Lesson `gorm:"foreignKey:LessonID"`
 
-	Enrollment Enrollment
-
-	Lesson Lesson
-
-	Completed bool
-
-	WatchedSeconds int
+	Completed      bool `gorm:"not null;default:false"`
+	WatchedSeconds int  `gorm:"not null;default:0"`
 }
