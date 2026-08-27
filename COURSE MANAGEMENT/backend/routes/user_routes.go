@@ -13,7 +13,7 @@ func UserRoutes(app fiber.Router) {
 
 	users := app.Group("/users")
 
-	users.Use(middleware.JWTProtected())
+	users.Use(middleware.AuthMiddleware)
 
 	users.Get("/profile", controller.Profile)
 
