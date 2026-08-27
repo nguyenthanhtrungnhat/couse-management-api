@@ -13,35 +13,53 @@ import (
 
 func main() {
 
+	// Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("❌ Cannot load .env")
 	}
 
+	// Connect PostgreSQL
 	config.ConnectDatabase()
 
-	seeders.SeedRoles()
+	// Seed development data
+	seeders.SeedAll()
 
+	// Create Fiber application
 	app := fiber.New()
 
-	// Register routes
+	// =========================
+	// Routes
+	// =========================
 
+	// Authentication
 	routes.AuthRoutes(app)
 
+	// Course
 	routes.SetupCourseRoutes(app)
 
+	// Course Section
 	routes.SetupCourseSectionRoutes(app)
 
+	// Lesson
 	routes.SetupLessonRoutes(app)
 
+	// File Material
 	routes.FileMaterialRoutes(app)
 
-	// Health check
+	// =========================
+	// Health Check
+	// =========================
+
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"success": true,
 			"message": "Course Management API",
 		})
 	})
+
+	// =========================
+	// Start Server
+	// =========================
 
 	log.Println("🚀 Server running on http://localhost:3000")
 
