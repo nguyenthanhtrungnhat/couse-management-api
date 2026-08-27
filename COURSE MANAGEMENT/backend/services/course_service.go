@@ -6,6 +6,9 @@ import (
 	"strings"
 
 	"course-management/dto/course"
+	"course-management/dto/filematerial"
+	"course-management/dto/lesson"
+	"course-management/dto/section"
 	"course-management/models"
 	"course-management/repositories"
 
@@ -433,17 +436,18 @@ func mapCourseToResponse(
 ) course.CourseResponse {
 
 	response := course.CourseResponse{
-		ID:            c.ID.String(),
-		InstructorID:  c.InstructorID.String(),
-		CategoryID:    c.CategoryID.String(),
-		Title:         c.Title,
-		Slug:          c.Slug,
-		Status:        c.Status,
-		Price:         c.Price,
-		AverageRating: c.AverageRating,
-		TotalStudents: c.TotalStudents,
-		CreatedAt:     c.CreatedAt,
-		UpdatedAt:     c.UpdatedAt,
+		ID:             c.ID.String(),
+		InstructorID:   c.InstructorID.String(),
+		CategoryID:     c.CategoryID.String(),
+		Title:          c.Title,
+		Slug:           c.Slug,
+		Status:         c.Status,
+		Price:          c.Price,
+		AverageRating:  c.AverageRating,
+		TotalStudents:  c.TotalStudents,
+		CreatedAt:      c.CreatedAt,
+		UpdatedAt:      c.UpdatedAt,
+		Sections:       make([]section.SectionResponse, 0),
 	}
 
 	if c.Description != nil {
@@ -456,6 +460,62 @@ func mapCourseToResponse(
 
 	if c.PreviewVideoURL != nil {
 		response.PreviewVideoURL = c.PreviewVideoURL
+	}
+
+	for _, sectionModel := range c.Sections {
+
+		sectionResponse := section.SectionResponse{
+			ID:        sectionModel.ID.String(),
+			CourseID:  sectionModel.CourseID.String(),
+			Title:     sectionModel.Title,
+			SortOrder: sectionModel.SortOrder,
+			CreatedAt: sectionModel.CreatedAt,
+			UpdatedAt: sectionModel.UpdatedAt,
+			Lessons:   make([]lesson.LessonResponse, 0),
+		}
+
+		for _, lessonModel := range sectionModel.Lessons {
+
+			lessonResponse := lesson.LessonResponse{
+				ID:              lessonModel.ID.String(),
+				SectionID:       lessonModel.SectionID.String(),
+				Title:           lessonModel.Title,
+				VideoURL:        lessonModel.VideoURL,
+				DurationSeconds: lessonModel.DurationSeconds,
+				IsPreview:       lessonModel.IsPreview,
+				SortOrder:       lessonModel.SortOrder,
+				CreatedAt:       lessonModel.CreatedAt,
+				UpdatedAt:       lessonModel.UpdatedAt,
+				FileMaterials:   make([]filematerial.FileMaterialResponse, 0),
+			}
+
+			for _, materialModel := range lessonModel.FileMaterials {
+
+				materialResponse := filematerial.FileMaterialResponse{
+					ID:       materialModel.ID.String(),
+					LessonID: materialModel.LessonID.String(),
+					FileName: materialModel.FileName,
+					FileURL:  materialModel.FileURL,
+					FileType: materialModel.FileType,
+					FileSize: materialModel.FileSize,
+				}
+
+				lessonResponse.FileMaterials = append(
+					lessonResponse.FileMaterials,
+					materialResponse,
+				)
+			}
+
+			sectionResponse.Lessons = append(
+				sectionResponse.Lessons,
+				lessonResponse,
+			)
+		}
+
+		response.Sections = append(
+			response.Sections,
+			sectionResponse,
+		)
 	}
 
 	return response
