@@ -2,10 +2,10 @@ package services
 
 import (
 	authDTO "course-management/dto/auth"
+	"course-management/constants"
 	"course-management/models"
 	"course-management/repositories"
 	"course-management/utils"
-	"course-management/constants"
 	"errors"
 
 	"gorm.io/gorm"
@@ -28,10 +28,15 @@ func NewAuthService() AuthService {
 	}
 }
 
-// Register tạo tài khoản mới
-func (s *authService) Register(req authDTO.RegisterRequest) (*authDTO.AuthResponse, error) {
+// ==========================================
+// REGISTER
+// ==========================================
 
-	// Kiểm tra email đã tồn tại
+func (s *authService) Register(
+	req authDTO.RegisterRequest,
+) (*authDTO.AuthResponse, error) {
+
+	// Check email exists
 	_, err := s.userRepo.FindByEmail(req.Email)
 
 	if err == nil {
@@ -42,19 +47,21 @@ func (s *authService) Register(req authDTO.RegisterRequest) (*authDTO.AuthRespon
 		return nil, err
 	}
 
-	// Lấy role student
+	// Default role = student
 	role, err := s.roleRepo.FindByName("student")
+
 	if err != nil {
 		return nil, err
 	}
 
 	// Hash password
 	hash, err := utils.HashPassword(req.Password)
+
 	if err != nil {
 		return nil, err
 	}
 
-	// Tạo user
+	// Create user
 	user := models.User{
 		RoleID:       role.ID,
 		FullName:     req.FullName,
@@ -63,15 +70,15 @@ func (s *authService) Register(req authDTO.RegisterRequest) (*authDTO.AuthRespon
 		Provider:     "local",
 	}
 
-	// Lưu database
+	// Save database
 	if err := s.userRepo.Create(&user); err != nil {
 		return nil, err
 	}
 
-	// Load Role để trả response
+	// Load role
 	user.Role = *role
 
-	// Tạo JWT
+	// Generate JWT
 	accessToken, err := utils.GenerateAccessToken(
 		user.ID.String(),
 		role.Name,
@@ -94,15 +101,22 @@ func (s *authService) Register(req authDTO.RegisterRequest) (*authDTO.AuthRespon
 	}, nil
 }
 
-// Login
-func (s *authService) Login(req authDTO.LoginRequest) (*authDTO.AuthResponse, error) {
+// ==========================================
+// LOGIN
+// ==========================================
+
+func (s *authService) Login(
+	req authDTO.LoginRequest,
+) (*authDTO.AuthResponse, error) {
 
 	user, err := s.userRepo.FindByEmail(req.Email)
 
 	if err != nil {
+
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, constants.ErrInvalidCredential
 		}
+
 		return nil, err
 	}
 
@@ -111,12 +125,15 @@ func (s *authService) Login(req authDTO.LoginRequest) (*authDTO.AuthResponse, er
 		return nil, constants.ErrGoogleAccount
 	}
 
-	// Kiểm tra mật khẩu
-	if !utils.CheckPassword(*user.PasswordHash, req.Password) {
+	// Check password
+	if !utils.CheckPassword(
+		*user.PasswordHash,
+		req.Password,
+	) {
 		return nil, constants.ErrInvalidCredential
 	}
 
-	// Sinh JWT
+	// Generate JWT
 	accessToken, err := utils.GenerateAccessToken(
 		user.ID.String(),
 		user.Role.Name,
