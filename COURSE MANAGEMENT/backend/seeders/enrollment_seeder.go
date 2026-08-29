@@ -124,7 +124,6 @@ func SeedEnrollments() {
 			id,
 			user_id,
 			course_id,
-			enrolled_at,
 			created_at,
 			updated_at
 		)

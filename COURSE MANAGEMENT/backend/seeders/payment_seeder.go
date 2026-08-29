@@ -112,7 +112,6 @@ func SeedPayments() {
 			bank_name,
 			transaction_code,
 			status,
-			paid_at,
 			created_at,
 			updated_at
 		)
