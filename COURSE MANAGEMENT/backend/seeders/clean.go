@@ -14,7 +14,7 @@ func CleanDatabase() error {
 		"payments",
 		"comments",
 		"reviews",
-		"lesson_progress",
+		"lesson_progresses",
 		"enrollments",
 		"file_materials",
 		"lessons",
