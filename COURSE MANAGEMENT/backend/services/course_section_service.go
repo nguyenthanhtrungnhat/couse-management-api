@@ -47,12 +47,15 @@ func NewCourseSectionService(
 	sectionRepository repositories.CourseSectionRepository,
 	courseRepository repositories.CourseRepository,
 ) CourseSectionService {
-
 	return &courseSectionService{
 		sectionRepository: sectionRepository,
 		courseRepository:  courseRepository,
 	}
 }
+
+// ============================================================
+// CREATE SECTION
+// ============================================================
 
 func (s *courseSectionService) CreateSection(
 	userID uuid.UUID,
@@ -60,7 +63,6 @@ func (s *courseSectionService) CreateSection(
 ) (*section.SectionResponse, error) {
 
 	courseID, err := uuid.Parse(req.CourseID)
-
 	if err != nil {
 		return nil, errors.New("invalid course id")
 	}
@@ -96,7 +98,12 @@ func (s *courseSectionService) CreateSection(
 	}
 
 	return mapSectionToResponse(newSection), nil
+
 }
+
+// ============================================================
+// GET SECTION
+// ============================================================
 
 func (s *courseSectionService) GetSection(
 	id uuid.UUID,
@@ -105,7 +112,7 @@ func (s *courseSectionService) GetSection(
 	result, err := s.sectionRepository.FindByID(id)
 
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows){
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("section not found")
 		}
 
@@ -113,7 +120,12 @@ func (s *courseSectionService) GetSection(
 	}
 
 	return mapSectionToResponse(result), nil
+
 }
+
+// ============================================================
+// GET SECTIONS BY COURSE
+// ============================================================
 
 func (s *courseSectionService) GetSectionsByCourse(
 	courseID uuid.UUID,
@@ -139,7 +151,12 @@ func (s *courseSectionService) GetSectionsByCourse(
 	}
 
 	return result, nil
+
 }
+
+// ============================================================
+// UPDATE SECTION
+// ============================================================
 
 func (s *courseSectionService) UpdateSection(
 	userID uuid.UUID,
@@ -178,14 +195,21 @@ func (s *courseSectionService) UpdateSection(
 	}
 
 	existing.Title = title
-	existing.SortOrder = req.SortOrder
+
+	// PostgreSQL: sort_order BIGINT -> Go: int64
+	existing.SortOrder = int64(req.SortOrder)
 
 	if err := s.sectionRepository.Update(existing); err != nil {
 		return nil, err
 	}
 
 	return mapSectionToResponse(existing), nil
+
 }
+
+// ============================================================
+// DELETE SECTION
+// ============================================================
 
 func (s *courseSectionService) DeleteSection(
 	userID uuid.UUID,
@@ -217,7 +241,12 @@ func (s *courseSectionService) DeleteSection(
 	}
 
 	return s.sectionRepository.Delete(id)
+
 }
+
+// ============================================================
+// MAPPER
+// ============================================================
 
 func mapSectionToResponse(
 	model *models.CourseSection,
@@ -231,4 +260,5 @@ func mapSectionToResponse(
 		CreatedAt: model.CreatedAt,
 		UpdatedAt: model.UpdatedAt,
 	}
+
 }

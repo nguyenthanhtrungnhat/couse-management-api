@@ -55,7 +55,12 @@ func NewLessonService(
 		sectionRepository: sectionRepository,
 		courseRepository:  courseRepository,
 	}
+
 }
+
+// ============================================================
+// CREATE LESSON
+// ============================================================
 
 func (s *lessonService) CreateLesson(
 	userID uuid.UUID,
@@ -79,7 +84,7 @@ func (s *lessonService) CreateLesson(
 		return nil, errors.New("video URL is required")
 	}
 
-	section, err := s.sectionRepository.FindByID(sectionID)
+	sectionModel, err := s.sectionRepository.FindByID(sectionID)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -89,27 +94,38 @@ func (s *lessonService) CreateLesson(
 		return nil, err
 	}
 
-	course, err := s.courseRepository.FindByID(
-		section.CourseID,
+	courseModel, err := s.courseRepository.FindByID(
+		sectionModel.CourseID,
 	)
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New("course not found")
+		}
+
 		return nil, err
 	}
 
-	if course.InstructorID != userID {
+	if courseModel.InstructorID != userID {
 		return nil, errors.New(
 			"you are not the instructor of this course",
 		)
 	}
 
 	newLesson := &models.Lesson{
-		SectionID:       sectionID,
-		Title:           title,
-		VideoURL:        videoURL,
-		DurationSeconds: req.DurationSeconds,
-		IsPreview:       req.IsPreview,
-		SortOrder:       req.SortOrder,
+		SectionID: sectionID,
+		Title:     title,
+
+		// PostgreSQL TEXT nullable -> *string
+		VideoURL: &videoURL,
+
+		// PostgreSQL BIGINT -> int64
+		DurationSeconds: int64(req.DurationSeconds),
+
+		IsPreview: req.IsPreview,
+
+		// PostgreSQL BIGINT -> int64
+		SortOrder: int64(req.SortOrder),
 	}
 
 	if err := s.lessonRepository.Create(newLesson); err != nil {
@@ -117,7 +133,12 @@ func (s *lessonService) CreateLesson(
 	}
 
 	return mapLessonToResponse(newLesson), nil
+
 }
+
+// ============================================================
+// GET LESSON
+// ============================================================
 
 func (s *lessonService) GetLesson(
 	id uuid.UUID,
@@ -134,7 +155,12 @@ func (s *lessonService) GetLesson(
 	}
 
 	return mapLessonToResponse(result), nil
+
 }
+
+// ============================================================
+// GET LESSONS BY SECTION
+// ============================================================
 
 func (s *lessonService) GetLessonsBySection(
 	sectionID uuid.UUID,
@@ -162,7 +188,12 @@ func (s *lessonService) GetLessonsBySection(
 	}
 
 	return result, nil
+
 }
+
+// ============================================================
+// UPDATE LESSON
+// ============================================================
 
 func (s *lessonService) UpdateLesson(
 	userID uuid.UUID,
@@ -180,23 +211,31 @@ func (s *lessonService) UpdateLesson(
 		return nil, err
 	}
 
-	section, err := s.sectionRepository.FindByID(
+	sectionModel, err := s.sectionRepository.FindByID(
 		existing.SectionID,
 	)
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New("section not found")
+		}
+
 		return nil, err
 	}
 
-	course, err := s.courseRepository.FindByID(
-		section.CourseID,
+	courseModel, err := s.courseRepository.FindByID(
+		sectionModel.CourseID,
 	)
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New("course not found")
+		}
+
 		return nil, err
 	}
 
-	if course.InstructorID != userID {
+	if courseModel.InstructorID != userID {
 		return nil, errors.New(
 			"you are not the instructor of this course",
 		)
@@ -214,17 +253,29 @@ func (s *lessonService) UpdateLesson(
 	}
 
 	existing.Title = title
-	existing.VideoURL = videoURL
-	existing.DurationSeconds = req.DurationSeconds
+
+	// PostgreSQL TEXT nullable -> *string
+	existing.VideoURL = &videoURL
+
+	// PostgreSQL BIGINT -> int64
+	existing.DurationSeconds = int64(req.DurationSeconds)
+
 	existing.IsPreview = req.IsPreview
-	existing.SortOrder = req.SortOrder
+
+	// PostgreSQL BIGINT -> int64
+	existing.SortOrder = int64(req.SortOrder)
 
 	if err := s.lessonRepository.Update(existing); err != nil {
 		return nil, err
 	}
 
 	return mapLessonToResponse(existing), nil
+
 }
+
+// ============================================================
+// DELETE LESSON
+// ============================================================
 
 func (s *lessonService) DeleteLesson(
 	userID uuid.UUID,
@@ -241,7 +292,7 @@ func (s *lessonService) DeleteLesson(
 		return err
 	}
 
-	section, err := s.sectionRepository.FindByID(
+	sectionModel, err := s.sectionRepository.FindByID(
 		existing.SectionID,
 	)
 
@@ -249,36 +300,53 @@ func (s *lessonService) DeleteLesson(
 		return err
 	}
 
-	course, err := s.courseRepository.FindByID(
-		section.CourseID,
+	courseModel, err := s.courseRepository.FindByID(
+		sectionModel.CourseID,
 	)
 
 	if err != nil {
 		return err
 	}
 
-	if course.InstructorID != userID {
+	if courseModel.InstructorID != userID {
 		return errors.New(
 			"you are not the instructor of this course",
 		)
 	}
 
 	return s.lessonRepository.Delete(id)
+
 }
+
+// ============================================================
+// MAPPER
+// ============================================================
 
 func mapLessonToResponse(
 	model *models.Lesson,
 ) *lesson.LessonResponse {
 
-	return &lesson.LessonResponse{
-		ID:              model.ID.String(),
-		SectionID:       model.SectionID.String(),
-		Title:           model.Title,
-		VideoURL:        model.VideoURL,
-		DurationSeconds: model.DurationSeconds,
-		IsPreview:       model.IsPreview,
-		SortOrder:       model.SortOrder,
-		CreatedAt:       model.CreatedAt,
-		UpdatedAt:       model.UpdatedAt,
+	videoURL := ""
+
+	if model.VideoURL != nil {
+		videoURL = *model.VideoURL
 	}
+
+	return &lesson.LessonResponse{
+		ID:        model.ID.String(),
+		SectionID: model.SectionID.String(),
+		Title:     model.Title,
+
+		VideoURL: videoURL,
+
+		DurationSeconds: int(model.DurationSeconds),
+
+		IsPreview: model.IsPreview,
+
+		SortOrder: int(model.SortOrder),
+
+		CreatedAt: model.CreatedAt,
+		UpdatedAt: model.UpdatedAt,
+	}
+
 }
