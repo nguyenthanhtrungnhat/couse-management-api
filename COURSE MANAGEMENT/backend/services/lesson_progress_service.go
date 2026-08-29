@@ -50,6 +50,10 @@ func NewLessonProgressService(
 	}
 }
 
+// ============================================================
+// UPDATE PROGRESS
+// ============================================================
+
 func (s *lessonProgressService) UpdateProgress(
 	userID uuid.UUID,
 	lessonID uuid.UUID,
@@ -60,37 +64,61 @@ func (s *lessonProgressService) UpdateProgress(
 		return nil, errors.New("watched_seconds cannot be negative")
 	}
 
+	// --------------------------------------------------------
+	// 1. Find lesson
+	// --------------------------------------------------------
+
 	lesson, err := s.lessonRepository.FindByID(lessonID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("lesson not found")
 		}
+
 		return nil, err
 	}
+
+	// --------------------------------------------------------
+	// 2. Check enrollment
+	// --------------------------------------------------------
 
 	enrollment, err := s.enrollmentRepository.FindByUserAndCourse(
 		userID,
 		lesson.Section.CourseID,
 	)
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("you are not enrolled in this course")
 		}
+
 		return nil, err
 	}
+
+	// --------------------------------------------------------
+	// 3. Find existing progress
+	// --------------------------------------------------------
 
 	existing, err := s.progressRepository.FindByEnrollmentAndLesson(
 		enrollment.ID,
 		lessonID,
 	)
 
+	// --------------------------------------------------------
+	// 4. Create new progress
+	// --------------------------------------------------------
+
 	if errors.Is(err, pgx.ErrNoRows) {
 
 		newProgress := &models.LessonProgress{
-			EnrollmentID:   enrollment.ID,
-			LessonID:       lessonID,
-			WatchedSeconds: req.WatchedSeconds,
+			BaseModel: models.BaseModel{
+				ID: uuid.New(),
+			},
+
+			EnrollmentID: enrollment.ID,
+			LessonID:     lessonID,
+
 			Completed:      req.Completed,
+			WatchedSeconds: int64(req.WatchedSeconds),
 		}
 
 		if err := s.progressRepository.Create(newProgress); err != nil {
@@ -100,11 +128,19 @@ func (s *lessonProgressService) UpdateProgress(
 		return mapProgressToResponse(newProgress), nil
 	}
 
+	// --------------------------------------------------------
+	// 5. Other database error
+	// --------------------------------------------------------
+
 	if err != nil {
 		return nil, err
 	}
 
-	existing.WatchedSeconds = req.WatchedSeconds
+	// --------------------------------------------------------
+	// 6. Update existing progress
+	// --------------------------------------------------------
+
+	existing.WatchedSeconds = int64(req.WatchedSeconds)
 	existing.Completed = req.Completed
 
 	if err := s.progressRepository.Update(existing); err != nil {
@@ -114,26 +150,48 @@ func (s *lessonProgressService) UpdateProgress(
 	return mapProgressToResponse(existing), nil
 }
 
+// ============================================================
+// GET LESSON PROGRESS
+// ============================================================
+
 func (s *lessonProgressService) GetLessonProgress(
 	userID uuid.UUID,
 	lessonID uuid.UUID,
 ) (*progress.ProgressResponse, error) {
+
+	// --------------------------------------------------------
+	// 1. Find lesson
+	// --------------------------------------------------------
 
 	lesson, err := s.lessonRepository.FindByID(lessonID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("lesson not found")
 		}
+
 		return nil, err
 	}
+
+	// --------------------------------------------------------
+	// 2. Check enrollment
+	// --------------------------------------------------------
 
 	enrollment, err := s.enrollmentRepository.FindByUserAndCourse(
 		userID,
 		lesson.Section.CourseID,
 	)
+
 	if err != nil {
-		return nil, errors.New("you are not enrolled in this course")
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New("you are not enrolled in this course")
+		}
+
+		return nil, err
 	}
+
+	// --------------------------------------------------------
+	// 3. Find progress
+	// --------------------------------------------------------
 
 	item, err := s.progressRepository.FindByEnrollmentAndLesson(
 		enrollment.ID,
@@ -151,31 +209,49 @@ func (s *lessonProgressService) GetLessonProgress(
 	return mapProgressToResponse(item), nil
 }
 
+// ============================================================
+// GET COURSE PROGRESS
+// ============================================================
+
 func (s *lessonProgressService) GetCourseProgress(
 	userID uuid.UUID,
 	courseID uuid.UUID,
 ) (*progress.CourseProgressResponse, error) {
 
-	_, err := s.courseRepository.FindByID(courseID)
+	// --------------------------------------------------------
+	// 1. Check course
+	// --------------------------------------------------------
+
+	courseModel, err := s.courseRepository.FindByID(courseID)
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("course not found")
 		}
+
 		return nil, err
 	}
+
+	// --------------------------------------------------------
+	// 2. Check enrollment
+	// --------------------------------------------------------
 
 	enrollment, err := s.enrollmentRepository.FindByUserAndCourse(
 		userID,
 		courseID,
 	)
-	if err != nil {
-		return nil, errors.New("you are not enrolled in this course")
-	}
 
-	courseModel, err := s.courseRepository.FindByID(courseID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New("you are not enrolled in this course")
+		}
+
 		return nil, err
 	}
+
+	// --------------------------------------------------------
+	// 3. Count total lessons
+	// --------------------------------------------------------
 
 	totalLessons := 0
 
@@ -183,12 +259,21 @@ func (s *lessonProgressService) GetCourseProgress(
 		totalLessons += len(section.Lessons)
 	}
 
+	// --------------------------------------------------------
+	// 4. Get progress records
+	// --------------------------------------------------------
+
 	progresses, err := s.progressRepository.FindByEnrollment(
 		enrollment.ID,
 	)
+
 	if err != nil {
 		return nil, err
 	}
+
+	// --------------------------------------------------------
+	// 5. Count completed lessons
+	// --------------------------------------------------------
 
 	completedLessons := 0
 
@@ -198,6 +283,10 @@ func (s *lessonProgressService) GetCourseProgress(
 		}
 	}
 
+	// --------------------------------------------------------
+	// 6. Calculate percentage
+	// --------------------------------------------------------
+
 	var percent float64
 
 	if totalLessons > 0 {
@@ -206,6 +295,10 @@ func (s *lessonProgressService) GetCourseProgress(
 			100
 	}
 
+	// --------------------------------------------------------
+	// 7. Response
+	// --------------------------------------------------------
+
 	return &progress.CourseProgressResponse{
 		CourseID:         courseID.String(),
 		TotalLessons:     totalLessons,
@@ -213,6 +306,10 @@ func (s *lessonProgressService) GetCourseProgress(
 		ProgressPercent:  percent,
 	}, nil
 }
+
+// ============================================================
+// MAP MODEL -> RESPONSE
+// ============================================================
 
 func mapProgressToResponse(
 	item *models.LessonProgress,
@@ -223,7 +320,7 @@ func mapProgressToResponse(
 		EnrollmentID:   item.EnrollmentID.String(),
 		LessonID:       item.LessonID.String(),
 		Completed:      item.Completed,
-		WatchedSeconds: item.WatchedSeconds,
+		WatchedSeconds: int(item.WatchedSeconds),
 		CreatedAt:      item.CreatedAt,
 		UpdatedAt:      item.UpdatedAt,
 	}

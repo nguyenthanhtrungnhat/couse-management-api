@@ -1,4 +1,3 @@
-
 package services
 
 import (
@@ -168,25 +167,23 @@ func (s *fileMaterialService) CreateMaterial(
 	// 7. Create database record
 	// --------------------------------------------------------
 
+	fileURL := fmt.Sprintf(
+		"/uploads/materials/%s",
+		filename,
+	)
+
+	fileType := ext
+
 	material := &models.FileMaterial{
 		BaseModel: models.BaseModel{
 			ID: fileID,
 		},
 
 		LessonID: lessonID,
-
 		FileName: file.Filename,
-
-		fileURL := fmt.Sprintf(
-	"/uploads/materials/%s",
-	filename,
-)
-
-fileType := ext
-
+		FileURL:  &fileURL,
 		FileSize: file.Size,
-
-		FileType: ext,
+		FileType: &fileType,
 	}
 
 	_, err = s.db.Exec(
@@ -452,4 +449,3 @@ func saveUploadedFile(
 
 	return err
 }
-

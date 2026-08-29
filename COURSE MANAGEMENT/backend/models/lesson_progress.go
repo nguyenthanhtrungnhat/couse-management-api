@@ -1,4 +1,3 @@
-
 package models
 
 import "github.com/google/uuid"
@@ -16,12 +15,10 @@ type LessonProgress struct {
 	Lesson     *Lesson     `json:"lesson,omitempty"`
 }
 
-// TableName returns the database table name.
 func (LessonProgress) TableName() string {
 	return "lesson_progresses"
 }
 
-// NewLessonProgress creates a new lesson progress record.
 func NewLessonProgress(
 	enrollmentID uuid.UUID,
 	lessonID uuid.UUID,
@@ -37,4 +34,3 @@ func NewLessonProgress(
 		WatchedSeconds: 0,
 	}
 }
-
