@@ -1,11 +1,14 @@
 package repositories
 
 import (
+	"context"
+	"errors"
+
 	"course-management/config"
 	"course-management/models"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
+	"github.com/jackc/pgx/v5"
 )
 
 type EnrollmentRepository interface {
@@ -19,20 +22,38 @@ type EnrollmentRepository interface {
 	CountByCourse(courseID uuid.UUID) (int64, error)
 }
 
-type enrollmentRepository struct {
-	db *gorm.DB
-}
+type enrollmentRepository struct{}
 
 func NewEnrollmentRepository() EnrollmentRepository {
-	return &enrollmentRepository{
-		db: config.DB,
-	}
+	return &enrollmentRepository{}
 }
 
 func (r *enrollmentRepository) Create(
 	enrollment *models.Enrollment,
 ) error {
-	return r.db.Create(enrollment).Error
+
+	query := `
+		INSERT INTO enrollments (
+			id,
+			user_id,
+			course_id,
+			created_at,
+			updated_at
+		)
+		VALUES ($1,$2,$3,$4,$5)
+	`
+
+	_, err := config.DB.Exec(
+		context.Background(),
+		query,
+		enrollment.ID,
+		enrollment.UserID,
+		enrollment.CourseID,
+		enrollment.CreatedAt,
+		enrollment.UpdatedAt,
+	)
+
+	return err
 }
 
 func (r *enrollmentRepository) FindByID(
@@ -41,13 +62,34 @@ func (r *enrollmentRepository) FindByID(
 
 	var enrollment models.Enrollment
 
-	err := r.db.
-		Preload("User").
-		Preload("Course").
-		First(&enrollment, "id = ?", id).
-		Error
+	query := `
+		SELECT
+			id,
+			user_id,
+			course_id,
+			created_at,
+			updated_at
+		FROM enrollments
+		WHERE id = $1
+	`
+
+	err := config.DB.QueryRow(
+		context.Background(),
+		query,
+		id,
+	).Scan(
+		&enrollment.ID,
+		&enrollment.UserID,
+		&enrollment.CourseID,
+		&enrollment.CreatedAt,
+		&enrollment.UpdatedAt,
+	)
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, pgx.ErrNoRows
+		}
+
 		return nil, err
 	}
 
@@ -61,17 +103,37 @@ func (r *enrollmentRepository) FindByUserAndCourse(
 
 	var enrollment models.Enrollment
 
-	err := r.db.
-		Preload("Course").
-		Where(
-			"user_id = ? AND course_id = ?",
-			userID,
-			courseID,
-		).
-		First(&enrollment).
-		Error
+	query := `
+		SELECT
+			id,
+			user_id,
+			course_id,
+			created_at,
+			updated_at
+		FROM enrollments
+		WHERE user_id = $1
+		  AND course_id = $2
+		LIMIT 1
+	`
+
+	err := config.DB.QueryRow(
+		context.Background(),
+		query,
+		userID,
+		courseID,
+	).Scan(
+		&enrollment.ID,
+		&enrollment.UserID,
+		&enrollment.CourseID,
+		&enrollment.CreatedAt,
+		&enrollment.UpdatedAt,
+	)
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, pgx.ErrNoRows
+		}
+
 		return nil, err
 	}
 
@@ -82,32 +144,108 @@ func (r *enrollmentRepository) FindByUser(
 	userID uuid.UUID,
 ) ([]models.Enrollment, error) {
 
-	var enrollments []models.Enrollment
+	query := `
+		SELECT
+			id,
+			user_id,
+			course_id,
+			created_at,
+			updated_at
+		FROM enrollments
+		WHERE user_id = $1
+		ORDER BY created_at DESC
+	`
 
-	err := r.db.
-		Preload("Course").
-		Where("user_id = ?", userID).
-		Order("created_at DESC").
-		Find(&enrollments).
-		Error
+	rows, err := config.DB.Query(
+		context.Background(),
+		query,
+		userID,
+	)
 
-	return enrollments, err
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	enrollments := make([]models.Enrollment, 0)
+
+	for rows.Next() {
+
+		var enrollment models.Enrollment
+
+		if err := rows.Scan(
+			&enrollment.ID,
+			&enrollment.UserID,
+			&enrollment.CourseID,
+			&enrollment.CreatedAt,
+			&enrollment.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		enrollments = append(enrollments, enrollment)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return enrollments, nil
 }
 
 func (r *enrollmentRepository) FindByCourse(
 	courseID uuid.UUID,
 ) ([]models.Enrollment, error) {
 
-	var enrollments []models.Enrollment
+	query := `
+		SELECT
+			id,
+			user_id,
+			course_id,
+			created_at,
+			updated_at
+		FROM enrollments
+		WHERE course_id = $1
+		ORDER BY created_at DESC
+	`
 
-	err := r.db.
-		Preload("User").
-		Where("course_id = ?", courseID).
-		Order("created_at DESC").
-		Find(&enrollments).
-		Error
+	rows, err := config.DB.Query(
+		context.Background(),
+		query,
+		courseID,
+	)
 
-	return enrollments, err
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	enrollments := make([]models.Enrollment, 0)
+
+	for rows.Next() {
+
+		var enrollment models.Enrollment
+
+		if err := rows.Scan(
+			&enrollment.ID,
+			&enrollment.UserID,
+			&enrollment.CourseID,
+			&enrollment.CreatedAt,
+			&enrollment.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		enrollments = append(enrollments, enrollment)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return enrollments, nil
 }
 
 func (r *enrollmentRepository) Exists(
@@ -115,27 +253,51 @@ func (r *enrollmentRepository) Exists(
 	courseID uuid.UUID,
 ) (bool, error) {
 
-	var count int64
+	var exists bool
 
-	err := r.db.
-		Model(&models.Enrollment{}).
-		Where(
-			"user_id = ? AND course_id = ?",
-			userID,
-			courseID,
-		).
-		Count(&count).
-		Error
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM enrollments
+			WHERE user_id = $1
+			  AND course_id = $2
+		)
+	`
 
-	return count > 0, err
+	err := config.DB.QueryRow(
+		context.Background(),
+		query,
+		userID,
+		courseID,
+	).Scan(&exists)
+
+	return exists, err
 }
 
 func (r *enrollmentRepository) Delete(
 	id uuid.UUID,
 ) error {
-	return r.db.
-		Delete(&models.Enrollment{}, "id = ?", id).
-		Error
+
+	query := `
+		DELETE FROM enrollments
+		WHERE id = $1
+	`
+
+	result, err := config.DB.Exec(
+		context.Background(),
+		query,
+		id,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+
+	return nil
 }
 
 func (r *enrollmentRepository) CountByCourse(
@@ -144,11 +306,17 @@ func (r *enrollmentRepository) CountByCourse(
 
 	var count int64
 
-	err := r.db.
-		Model(&models.Enrollment{}).
-		Where("course_id = ?", courseID).
-		Count(&count).
-		Error
+	query := `
+		SELECT COUNT(*)
+		FROM enrollments
+		WHERE course_id = $1
+	`
+
+	err := config.DB.QueryRow(
+		context.Background(),
+		query,
+		courseID,
+	).Scan(&count)
 
 	return count, err
 }

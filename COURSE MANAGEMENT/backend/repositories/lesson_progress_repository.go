@@ -1,11 +1,14 @@
 package repositories
 
 import (
+	"context"
+	"errors"
+
 	"course-management/config"
 	"course-management/models"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
+	"github.com/jackc/pgx/v5"
 )
 
 type LessonProgressRepository interface {
@@ -23,14 +26,10 @@ type LessonProgressRepository interface {
 	) ([]models.LessonProgress, error)
 }
 
-type lessonProgressRepository struct {
-	db *gorm.DB
-}
+type lessonProgressRepository struct{}
 
 func NewLessonProgressRepository() LessonProgressRepository {
-	return &lessonProgressRepository{
-		db: config.DB,
-	}
+	return &lessonProgressRepository{}
 }
 
 func (r *lessonProgressRepository) FindByEnrollmentAndLesson(
@@ -40,16 +39,41 @@ func (r *lessonProgressRepository) FindByEnrollmentAndLesson(
 
 	var progress models.LessonProgress
 
-	err := r.db.
-		Where(
-			"enrollment_id = ? AND lesson_id = ?",
-			enrollmentID,
-			lessonID,
-		).
-		First(&progress).
-		Error
+	query := `
+		SELECT
+			id,
+			enrollment_id,
+			lesson_id,
+			completed,
+			watched_seconds,
+			created_at,
+			updated_at
+		FROM lesson_progress
+		WHERE enrollment_id = $1
+		  AND lesson_id = $2
+		LIMIT 1
+	`
+
+	err := config.DB.QueryRow(
+		context.Background(),
+		query,
+		enrollmentID,
+		lessonID,
+	).Scan(
+		&progress.ID,
+		&progress.EnrollmentID,
+		&progress.LessonID,
+		&progress.Completed,
+		&progress.WatchedSeconds,
+		&progress.CreatedAt,
+		&progress.UpdatedAt,
+	)
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, pgx.ErrNoRows
+		}
+
 		return nil, err
 	}
 
@@ -59,28 +83,120 @@ func (r *lessonProgressRepository) FindByEnrollmentAndLesson(
 func (r *lessonProgressRepository) Create(
 	progress *models.LessonProgress,
 ) error {
-	return r.db.Create(progress).Error
+
+	query := `
+		INSERT INTO lesson_progress (
+			id,
+			enrollment_id,
+			lesson_id,
+			completed,
+			watched_seconds,
+			created_at,
+			updated_at
+		)
+		VALUES ($1,$2,$3,$4,$5,$6,$7)
+	`
+
+	_, err := config.DB.Exec(
+		context.Background(),
+		query,
+		progress.ID,
+		progress.EnrollmentID,
+		progress.LessonID,
+		progress.Completed,
+		progress.WatchedSeconds,
+		progress.CreatedAt,
+		progress.UpdatedAt,
+	)
+
+	return err
 }
 
 func (r *lessonProgressRepository) Update(
 	progress *models.LessonProgress,
 ) error {
-	return r.db.Save(progress).Error
+
+	query := `
+		UPDATE lesson_progress
+		SET
+			completed = $1,
+			watched_seconds = $2,
+			updated_at = $3
+		WHERE id = $4
+	`
+
+	result, err := config.DB.Exec(
+		context.Background(),
+		query,
+		progress.Completed,
+		progress.WatchedSeconds,
+		progress.UpdatedAt,
+		progress.ID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+
+	return nil
 }
 
 func (r *lessonProgressRepository) FindByEnrollment(
 	enrollmentID uuid.UUID,
 ) ([]models.LessonProgress, error) {
 
-	var progresses []models.LessonProgress
+	query := `
+		SELECT
+			id,
+			enrollment_id,
+			lesson_id,
+			completed,
+			watched_seconds,
+			created_at,
+			updated_at
+		FROM lesson_progress
+		WHERE enrollment_id = $1
+		ORDER BY created_at ASC
+	`
 
-	err := r.db.
-		Where("enrollment_id = ?", enrollmentID).
-		Order("created_at ASC").
-		Find(&progresses).
-		Error
+	rows, err := config.DB.Query(
+		context.Background(),
+		query,
+		enrollmentID,
+	)
 
 	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	progresses := make([]models.LessonProgress, 0)
+
+	for rows.Next() {
+
+		var progress models.LessonProgress
+
+		if err := rows.Scan(
+			&progress.ID,
+			&progress.EnrollmentID,
+			&progress.LessonID,
+			&progress.Completed,
+			&progress.WatchedSeconds,
+			&progress.CreatedAt,
+			&progress.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		progresses = append(progresses, progress)
+	}
+
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
