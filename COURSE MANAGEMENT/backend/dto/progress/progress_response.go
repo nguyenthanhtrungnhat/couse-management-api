@@ -13,8 +13,8 @@ type ProgressResponse struct {
 }
 
 type CourseProgressResponse struct {
-	CourseID        string  `json:"course_id"`
-	TotalLessons    int     `json:"total_lessons"`
-	CompletedLessons int    `json:"completed_lessons"`
-	ProgressPercent float64 `json:"progress_percent"`
+	CourseID         string  `json:"course_id"`
+	TotalLessons     int     `json:"total_lessons"`
+	CompletedLessons int     `json:"completed_lessons"`
+	ProgressPercent  float64 `json:"progress_percent"`
 }

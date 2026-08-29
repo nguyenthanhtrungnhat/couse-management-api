@@ -72,4 +72,3 @@ func SeedPaymentLogs() {
 		log.Printf("❌ Payment iteration error: %v", err)
 	}
 }
-

@@ -119,4 +119,3 @@ func SeedCourses() {
 		log.Printf("✅ Course: %s", course.title)
 	}
 }
-

@@ -43,7 +43,7 @@ func (s *authService) Register(
 		return nil, constants.ErrEmailExists
 	}
 
-	if !errors.Is(err, pgx.ErrNoRows){
+	if !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
 

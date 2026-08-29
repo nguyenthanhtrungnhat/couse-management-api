@@ -1,4 +1,3 @@
-
 package models
 
 import "github.com/google/uuid"
@@ -47,4 +46,3 @@ func NewPayment(
 		Status:          status,
 	}
 }
-

@@ -1,4 +1,3 @@
-
 package models
 
 import "github.com/google/uuid"
@@ -15,7 +14,7 @@ type Lesson struct {
 	SortOrder       int64   `json:"sort_order"`
 
 	Section       *CourseSection `json:"section,omitempty"`
-	FileMaterials []FileMaterial  `json:"file_materials,omitempty"`
+	FileMaterials []FileMaterial `json:"file_materials,omitempty"`
 }
 
 // TableName returns the database table name.
@@ -45,4 +44,3 @@ func NewLesson(
 		SortOrder:       sortOrder,
 	}
 }
-

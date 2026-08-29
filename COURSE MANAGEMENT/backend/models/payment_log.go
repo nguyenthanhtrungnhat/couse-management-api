@@ -1,4 +1,3 @@
-
 package models
 
 import (
@@ -35,4 +34,3 @@ func NewPaymentLog(
 		RawResponse: rawResponse,
 	}
 }
-

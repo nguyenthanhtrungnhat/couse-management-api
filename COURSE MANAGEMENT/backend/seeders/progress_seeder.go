@@ -1,4 +1,3 @@
-
 package seeders
 
 import (
@@ -127,4 +126,3 @@ func SeedProgress() {
 		log.Printf("❌ Enrollment iteration error: %v", err)
 	}
 }
-

@@ -1,4 +1,3 @@
-
 package models
 
 import "github.com/google/uuid"
@@ -32,4 +31,3 @@ func NewEnrollment(
 		CourseID: courseID,
 	}
 }
-

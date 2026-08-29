@@ -1,4 +1,3 @@
-
 package models
 
 import "github.com/google/uuid"
@@ -8,11 +7,11 @@ type FileMaterial struct {
 
 	LessonID uuid.UUID `json:"lesson_id"`
 
-	FileName string  `json:"file_name"`
-	FileURL  *string `json:"file_url,omitempty"`
-	FileSize int64   `json:"file_size"`
-	FileType *string `json:"file_type,omitempty"`
-	SortOrder int64  `json:"sort_order"`
+	FileName  string  `json:"file_name"`
+	FileURL   *string `json:"file_url,omitempty"`
+	FileSize  int64   `json:"file_size"`
+	FileType  *string `json:"file_type,omitempty"`
+	SortOrder int64   `json:"sort_order"`
 
 	Lesson *Lesson `json:"lesson,omitempty"`
 }
@@ -45,4 +44,3 @@ func NewFileMaterial(
 		SortOrder: sortOrder,
 	}
 }
-

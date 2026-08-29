@@ -1,4 +1,3 @@
-
 package seeders
 
 import (
@@ -6,142 +5,106 @@ import (
 	"log"
 
 	"course-management/config"
+	"course-management/models"
 
 	"github.com/google/uuid"
 )
 
 func SeedEnrollments() {
-	ctx := context.Background()
+	log.Println("🌱 Seeding enrollments...")
 
-	userRows, err := config.DB.Query(
-		ctx,
-		`SELECT id FROM users ORDER BY created_at ASC`,
-	)
-	if err != nil {
-		log.Printf("❌ Cannot load users: %v", err)
-		return
-	}
-
-	var userIDs []uuid.UUID
-
-	for userRows.Next() {
-		var id uuid.UUID
-
-		if err := userRows.Scan(&id); err != nil {
-			log.Printf("❌ Cannot read user ID: %v", err)
-			continue
-		}
-
-		userIDs = append(userIDs, id)
-	}
-
-	userRows.Close()
-
-	if err := userRows.Err(); err != nil {
-		log.Printf("❌ User iteration error: %v", err)
-		return
-	}
-
-	if len(userIDs) == 0 {
-		log.Println("❌ No users found")
-		return
-	}
-
-	courseRows, err := config.DB.Query(
-		ctx,
-		`SELECT id FROM courses ORDER BY created_at ASC`,
-	)
-	if err != nil {
-		log.Printf("❌ Cannot load courses: %v", err)
-		return
-	}
-
-	var courseIDs []uuid.UUID
-
-	for courseRows.Next() {
-		var id uuid.UUID
-
-		if err := courseRows.Scan(&id); err != nil {
-			log.Printf("❌ Cannot read course ID: %v", err)
-			continue
-		}
-
-		courseIDs = append(courseIDs, id)
-	}
-
-	courseRows.Close()
-
-	if err := courseRows.Err(); err != nil {
-		log.Printf("❌ Course iteration error: %v", err)
-		return
-	}
-
-	if len(courseIDs) == 0 {
-		log.Println("❌ No courses found")
-		return
-	}
-
-	// Find a student instead of using the instructor account.
+	// Get student
 	var studentID uuid.UUID
-
-	err = config.DB.QueryRow(
-		ctx,
-		`SELECT u.id
-		 FROM users u
-		 JOIN roles r ON r.id = u.role_id
-		 WHERE r.name = $1
-		 ORDER BY u.created_at ASC
-		 LIMIT 1`,
-		"student",
+	err := config.DB.QueryRow(
+		context.Background(),
+		`
+		SELECT id
+		FROM users
+		WHERE email = $1
+		LIMIT 1
+		`,
+		"student@example.com",
 	).Scan(&studentID)
 
 	if err != nil {
-		log.Printf("❌ Cannot find student: %v", err)
+		log.Printf("❌ Enrollment: failed to find student: %v", err)
 		return
 	}
 
-	// Enroll the student in the first published course.
-	var courseID uuid.UUID
-
-	err = config.DB.QueryRow(
-		ctx,
-		`SELECT id
-		 FROM courses
-		 WHERE status = $1
-		 ORDER BY created_at ASC
-		 LIMIT 1`,
-		"published",
-	).Scan(&courseID)
+	// Get courses
+	rows, err := config.DB.Query(
+		context.Background(),
+		`
+		SELECT id
+		FROM courses
+		ORDER BY created_at
+		`,
+	)
 
 	if err != nil {
-		log.Printf("❌ Cannot find published course: %v", err)
+		log.Printf("❌ Enrollment: failed to get courses: %v", err)
 		return
 	}
+	defer rows.Close()
 
-	_, err = config.DB.Exec(
-		ctx,
-		`INSERT INTO enrollments (
-			id,
-			user_id,
-			course_id,
-			created_at,
-			updated_at
+	for rows.Next() {
+		var courseID uuid.UUID
+
+		if err := rows.Scan(&courseID); err != nil {
+			log.Printf("❌ Enrollment: failed to scan course: %v", err)
+			continue
+		}
+
+		enrollmentID := uuid.New()
+
+		_, err := config.DB.Exec(
+			context.Background(),
+			`
+			INSERT INTO enrollments (
+				id,
+				created_at,
+				updated_at,
+				user_id,
+				course_id
+			)
+			VALUES (
+				$1,
+				NOW(),
+				NOW(),
+				$2,
+				$3
+			)
+			ON CONFLICT (user_id, course_id)
+			DO NOTHING
+			`,
+			enrollmentID,
+			studentID,
+			courseID,
 		)
-		VALUES ($1, $2, $3, NOW(), NOW(), NOW())`,
-		uuid.New(),
-		studentID,
-		courseID,
-	)
 
-	if err != nil {
-		log.Printf("❌ Enrollment: %v", err)
-		return
+		if err != nil {
+			log.Printf(
+				"❌ Enrollment: student %s -> course %s: %v",
+				studentID,
+				courseID,
+				err,
+			)
+			continue
+		}
+
+		log.Printf(
+			"✅ Enrollment: student %s -> course %s",
+			studentID,
+			courseID,
+		)
 	}
 
-	log.Printf(
-		"✅ Enrollment: student %s -> course %s",
-		studentID,
-		courseID,
-	)
+	if err := rows.Err(); err != nil {
+		log.Printf("❌ Enrollment rows error: %v", err)
+	}
+
+	log.Println("✅ Enrollment seeding completed")
 }
 
+// Keep models import available if other seeders share this pattern.
+var _ = models.Enrollment{}

@@ -1,4 +1,3 @@
-
 package seeders
 
 import (
@@ -11,119 +10,84 @@ import (
 )
 
 func SeedPayments() {
-	ctx := context.Background()
+	log.Println("🌱 Seeding payments...")
 
-	// Get students.
-	rows, err := config.DB.Query(
-		ctx,
-		`SELECT u.id
-		 FROM users u
-		 JOIN roles r ON r.id = u.role_id
-		 WHERE r.name = $1
-		 ORDER BY u.created_at ASC`,
-		"student",
-	)
+	// Get student
+	var studentID uuid.UUID
+
+	err := config.DB.QueryRow(
+		context.Background(),
+		`
+		SELECT id
+		FROM users
+		WHERE email = $1
+		LIMIT 1
+		`,
+		"student@example.com",
+	).Scan(&studentID)
+
 	if err != nil {
-		log.Printf("❌ Cannot load students: %v", err)
+		log.Printf("❌ Payment: failed to find student: %v", err)
 		return
 	}
 
-	var studentIDs []uuid.UUID
+	// Get first course
+	var courseID uuid.UUID
+	var coursePrice float64
 
-	for rows.Next() {
-		var id uuid.UUID
-
-		if err := rows.Scan(&id); err != nil {
-			log.Printf("❌ Cannot read student ID: %v", err)
-			continue
-		}
-
-		studentIDs = append(studentIDs, id)
-	}
-
-	rows.Close()
-
-	if err := rows.Err(); err != nil {
-		log.Printf("❌ Student iteration error: %v", err)
-		return
-	}
-
-	if len(studentIDs) == 0 {
-		log.Println("❌ No students found")
-		return
-	}
-
-	// Get published courses.
-	courseRows, err := config.DB.Query(
-		ctx,
-		`SELECT id, price
-		 FROM courses
-		 WHERE status = $1
-		 ORDER BY created_at ASC`,
-		"published",
+	err = config.DB.QueryRow(
+		context.Background(),
+		`
+		SELECT id, price
+		FROM courses
+		ORDER BY created_at
+		LIMIT 1
+		`,
+	).Scan(
+		&courseID,
+		&coursePrice,
 	)
+
 	if err != nil {
-		log.Printf("❌ Cannot load published courses: %v", err)
+		log.Printf("❌ Payment: failed to find course: %v", err)
 		return
 	}
-
-	type courseData struct {
-		id    uuid.UUID
-		price float64
-	}
-
-	var courses []courseData
-
-	for courseRows.Next() {
-		var c courseData
-
-		if err := courseRows.Scan(&c.id, &c.price); err != nil {
-			log.Printf("❌ Cannot read course: %v", err)
-			continue
-		}
-
-		courses = append(courses, c)
-	}
-
-	courseRows.Close()
-
-	if err := courseRows.Err(); err != nil {
-		log.Printf("❌ Course iteration error: %v", err)
-		return
-	}
-
-	if len(courses) == 0 {
-		log.Println("❌ No published courses found")
-		return
-	}
-
-	studentID := studentIDs[0]
-	c := courses[0]
 
 	paymentID := uuid.New()
+	transactionCode := "DEMO-TXN-" + uuid.New().String()
 
 	_, err = config.DB.Exec(
-		ctx,
-		`INSERT INTO payments (
+		context.Background(),
+		`
+		INSERT INTO payments (
 			id,
+			created_at,
+			updated_at,
 			user_id,
 			course_id,
 			amount,
 			bank_name,
 			transaction_code,
-			status,
-			created_at,
-			updated_at
+			status
 		)
 		VALUES (
-			$1, $2, $3, $4, $5, $6, $7, NOW(), NOW(), NOW()
-		)`,
+			$1,
+			NOW(),
+			NOW(),
+			$2,
+			$3,
+			$4,
+			$5,
+			$6,
+			$7
+		)
+		`,
 		paymentID,
 		studentID,
-		c.id,
-		c.price,
-		"Vietcombank",
-		"DEMO-TXN-001",
+		courseID,
+		coursePrice,
+		"Demo Bank",
+		transactionCode,
 		"success",
 	)
 
@@ -132,6 +96,13 @@ func SeedPayments() {
 		return
 	}
 
-	log.Printf("✅ Payment: %s", paymentID)
-}
+	log.Printf(
+		"✅ Payment: student %s -> course %s | amount %.2f | transaction %s",
+		studentID,
+		courseID,
+		coursePrice,
+		transactionCode,
+	)
 
+	log.Println("✅ Payment seeding completed")
+}

@@ -1,4 +1,3 @@
-
 package seeders
 
 import (
@@ -90,4 +89,3 @@ func SeedFileMaterials() {
 		log.Printf("❌ Lesson iteration error: %v", err)
 	}
 }
-

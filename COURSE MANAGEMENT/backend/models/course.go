@@ -1,4 +1,3 @@
-
 package models
 
 import (
@@ -61,11 +60,10 @@ func NewCourse(
 		ThumbnailURL:    thumbnailURL,
 		PreviewVideoURL: previewVideoURL,
 
-		Price:         price,
-		Status:        status,
+		Price:  price,
+		Status: status,
 
 		AverageRating: 0,
 		TotalStudents: 0,
 	}
 }
-

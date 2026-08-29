@@ -1,4 +1,3 @@
-
 package models
 
 import "github.com/google/uuid"
@@ -6,8 +5,8 @@ import "github.com/google/uuid"
 type Comment struct {
 	BaseModel
 
-	UserID   uuid.UUID `json:"user_id"`
-	CourseID uuid.UUID `json:"course_id"`
+	UserID   uuid.UUID  `json:"user_id"`
+	CourseID uuid.UUID  `json:"course_id"`
 	ParentID *uuid.UUID `json:"parent_id,omitempty"`
 
 	Content string `json:"content"`
@@ -42,4 +41,3 @@ func NewComment(
 		Content:  content,
 	}
 }
-

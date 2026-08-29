@@ -1,4 +1,3 @@
-
 package seeders
 
 import (
@@ -147,4 +146,3 @@ func SeedReviews() {
 		)
 	}
 }
-

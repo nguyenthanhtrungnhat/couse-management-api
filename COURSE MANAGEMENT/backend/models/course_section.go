@@ -1,4 +1,3 @@
-
 package models
 
 import (
@@ -13,8 +12,8 @@ type CourseSection struct {
 	Title     string `json:"title"`
 	SortOrder int64  `json:"sort_order"`
 
-	Course   *Course `json:"course,omitempty"`
-	Lessons  []Lesson `json:"lessons,omitempty"`
+	Course  *Course  `json:"course,omitempty"`
+	Lessons []Lesson `json:"lessons,omitempty"`
 }
 
 // TableName returns the database table name.
@@ -38,4 +37,3 @@ func NewCourseSection(
 		SortOrder: sortOrder,
 	}
 }
-

@@ -1,4 +1,3 @@
-
 package models
 
 import "github.com/google/uuid"
@@ -25,4 +24,3 @@ func NewRole(name string) *Role {
 		Name: name,
 	}
 }
-

@@ -1,4 +1,3 @@
-
 package seeders
 
 import (
@@ -102,4 +101,3 @@ func SeedLessons() {
 		log.Printf("❌ Section iteration error: %v", err)
 	}
 }
-

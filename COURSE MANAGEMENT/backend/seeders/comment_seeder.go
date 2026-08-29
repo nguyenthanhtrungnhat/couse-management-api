@@ -1,4 +1,3 @@
-
 package seeders
 
 import (
@@ -134,4 +133,3 @@ func SeedComments() {
 		log.Printf("✅ Comment: %s", comment.content)
 	}
 }
-
