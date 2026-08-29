@@ -1,18 +1,22 @@
+
 package services
 
 import (
-	"course-management/config"
-	"course-management/models"
-
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"course-management/config"
+	"course-management/models"
+
 	"github.com/google/uuid"
-	"gorm.io/gorm"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type FileMaterialService interface {
@@ -37,7 +41,7 @@ type FileMaterialService interface {
 }
 
 type fileMaterialService struct {
-	db *gorm.DB
+	db *pgxpool.Pool
 }
 
 func NewFileMaterialService() FileMaterialService {
@@ -64,20 +68,28 @@ func (s *fileMaterialService) CreateMaterial(
 		return nil, errors.New("file is empty")
 	}
 
+	ctx := context.Background()
+
 	// --------------------------------------------------------
 	// 1. Find lesson -> section -> course
 	// --------------------------------------------------------
 
-	var lesson models.Lesson
+	var courseInstructorID uuid.UUID
 
-	err := s.db.
-		Preload("Section").
-		Preload("Section.Course").
-		First(&lesson, "id = ?", lessonID).
-		Error
+	err := s.db.QueryRow(
+		ctx,
+		`SELECT c.instructor_id
+		 FROM lessons l
+		 JOIN course_sections cs
+		   ON cs.id = l.section_id
+		 JOIN courses c
+		   ON c.id = cs.course_id
+		 WHERE l.id = $1`,
+		lessonID,
+	).Scan(&courseInstructorID)
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("lesson not found")
 		}
 
@@ -88,7 +100,7 @@ func (s *fileMaterialService) CreateMaterial(
 	// 2. Check instructor owns the course
 	// --------------------------------------------------------
 
-	if lesson.Section.Course.InstructorID != instructorID {
+	if courseInstructorID != instructorID {
 		return nil, errors.New(
 			"you do not have permission to add material to this lesson",
 		)
@@ -114,9 +126,7 @@ func (s *fileMaterialService) CreateMaterial(
 	}
 
 	if !allowedExtensions[ext] {
-		return nil, errors.New(
-			"unsupported file type",
-		)
+		return nil, errors.New("unsupported file type")
 	}
 
 	// --------------------------------------------------------
@@ -147,7 +157,7 @@ func (s *fileMaterialService) CreateMaterial(
 	)
 
 	// --------------------------------------------------------
-	// 6. Save file
+	// 6. Save physical file
 	// --------------------------------------------------------
 
 	if err := saveUploadedFile(file, filePath); err != nil {
@@ -155,11 +165,7 @@ func (s *fileMaterialService) CreateMaterial(
 	}
 
 	// --------------------------------------------------------
-	// 7. Get next sort order
-	// --------------------------------------------------------
-
-	// --------------------------------------------------------
-	// 8. Create database record
+	// 7. Create database record
 	// --------------------------------------------------------
 
 	material := &models.FileMaterial{
@@ -181,9 +187,29 @@ func (s *fileMaterialService) CreateMaterial(
 		FileType: ext,
 	}
 
-	if err := s.db.Create(material).Error; err != nil {
+	_, err = s.db.Exec(
+		ctx,
+		`INSERT INTO file_materials (
+			id,
+			lesson_id,
+			file_name,
+			file_url,
+			file_type,
+			file_size,
+			created_at,
+			updated_at
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
+		material.ID,
+		material.LessonID,
+		material.FileName,
+		material.FileURL,
+		material.FileType,
+		material.FileSize,
+	)
 
-		// Remove physical file if DB insert fails
+	if err != nil {
+		// Remove physical file if DB insert fails.
 		_ = os.Remove(filePath)
 
 		return nil, err
@@ -200,15 +226,55 @@ func (s *fileMaterialService) GetMaterialsByLesson(
 	lessonID uuid.UUID,
 ) ([]models.FileMaterial, error) {
 
-	var materials []models.FileMaterial
+	ctx := context.Background()
 
-	err := s.db.
-		Where("lesson_id = ?", lessonID).
-		Order("created_at ASC").
-		Find(&materials).
-		Error
+	rows, err := s.db.Query(
+		ctx,
+		`SELECT
+			id,
+			lesson_id,
+			file_name,
+			file_url,
+			file_type,
+			file_size,
+			created_at,
+			updated_at
+		FROM file_materials
+		WHERE lesson_id = $1
+		ORDER BY created_at ASC`,
+		lessonID,
+	)
 
 	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	materials := make([]models.FileMaterial, 0)
+
+	for rows.Next() {
+		var material models.FileMaterial
+
+		err := rows.Scan(
+			&material.ID,
+			&material.LessonID,
+			&material.FileName,
+			&material.FileURL,
+			&material.FileType,
+			&material.FileSize,
+			&material.CreatedAt,
+			&material.UpdatedAt,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		materials = append(materials, material)
+	}
+
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -223,14 +289,37 @@ func (s *fileMaterialService) GetMaterialByID(
 	materialID uuid.UUID,
 ) (*models.FileMaterial, error) {
 
+	ctx := context.Background()
+
 	var material models.FileMaterial
 
-	err := s.db.
-		First(&material, "id = ?", materialID).
-		Error
+	err := s.db.QueryRow(
+		ctx,
+		`SELECT
+			id,
+			lesson_id,
+			file_name,
+			file_url,
+			file_type,
+			file_size,
+			created_at,
+			updated_at
+		FROM file_materials
+		WHERE id = $1`,
+		materialID,
+	).Scan(
+		&material.ID,
+		&material.LessonID,
+		&material.FileName,
+		&material.FileURL,
+		&material.FileType,
+		&material.FileSize,
+		&material.CreatedAt,
+		&material.UpdatedAt,
+	)
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("material not found")
 		}
 
@@ -249,63 +338,86 @@ func (s *fileMaterialService) DeleteMaterial(
 	materialID uuid.UUID,
 ) error {
 
+	ctx := context.Background()
+
 	// --------------------------------------------------------
 	// 1. Find material -> lesson -> section -> course
 	// --------------------------------------------------------
 
-	var material models.FileMaterial
+	var (
+		lessonID           uuid.UUID
+		fileURL            string
+		courseInstructorID uuid.UUID
+	)
 
-	err := s.db.
-		Preload("Lesson").
-		Preload("Lesson.Section").
-		Preload("Lesson.Section.Course").
-		First(&material, "id = ?", materialID).
-		Error
+	err := s.db.QueryRow(
+		ctx,
+		`SELECT
+			fm.lesson_id,
+			fm.file_url,
+			c.instructor_id
+		FROM file_materials fm
+		JOIN lessons l
+		  ON l.id = fm.lesson_id
+		JOIN course_sections cs
+		  ON cs.id = l.section_id
+		JOIN courses c
+		  ON c.id = cs.course_id
+		WHERE fm.id = $1`,
+		materialID,
+	).Scan(
+		&lessonID,
+		&fileURL,
+		&courseInstructorID,
+	)
 
 	if err != nil {
-
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return errors.New("material not found")
 		}
 
 		return err
 	}
 
+	_ = lessonID
+
 	// --------------------------------------------------------
 	// 2. Check instructor ownership
 	// --------------------------------------------------------
 
-	if material.Lesson.Section.Course.InstructorID != instructorID {
+	if courseInstructorID != instructorID {
 		return errors.New(
 			"you do not have permission to delete this material",
 		)
 	}
 
 	// --------------------------------------------------------
-	// 3. Delete physical file
+	// 3. Delete database record
 	// --------------------------------------------------------
 
-	if material.FileURL != "" {
+	result, err := s.db.Exec(
+		ctx,
+		`DELETE FROM file_materials
+		 WHERE id = $1`,
+		materialID,
+	)
 
-		filePath := strings.TrimPrefix(
-			material.FileURL,
-			"/",
-		)
+	if err != nil {
+		return err
+	}
 
-		_ = os.Remove(filePath)
+	if result.RowsAffected() == 0 {
+		return errors.New("material not found")
 	}
 
 	// --------------------------------------------------------
-	// 4. Delete DB record
+	// 4. Delete physical file
 	// --------------------------------------------------------
 
-	if err := s.db.Delete(
-		&models.FileMaterial{},
-		"id = ?",
-		materialID,
-	).Error; err != nil {
+	if fileURL != "" {
+		filePath := strings.TrimPrefix(fileURL, "/")
 
-		return err
+		_ = os.Remove(filePath)
 	}
 
 	return nil
@@ -321,7 +433,6 @@ func saveUploadedFile(
 ) error {
 
 	src, err := file.Open()
-
 	if err != nil {
 		return err
 	}
@@ -329,35 +440,14 @@ func saveUploadedFile(
 	defer src.Close()
 
 	dst, err := os.Create(destination)
-
 	if err != nil {
 		return err
 	}
 
 	defer dst.Close()
 
-	buffer := make([]byte, 32*1024)
+	_, err = io.Copy(dst, src)
 
-	for {
-
-		n, readErr := src.Read(buffer)
-
-		if n > 0 {
-
-			if _, err := dst.Write(buffer[:n]); err != nil {
-				return err
-			}
-		}
-
-		if readErr != nil {
-
-			if readErr.Error() == "EOF" {
-				break
-			}
-
-			break
-		}
-	}
-
-	return nil
+	return err
 }
+
