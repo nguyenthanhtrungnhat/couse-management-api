@@ -1,31 +1,40 @@
 package seeders
 
+import "log"
+
 func SeedAll() {
-	// Clean old seed data first.
-	CleanDatabase()
+log.Println("🌱 Starting database seeding...")
 
-	// 1. Base data
-	SeedRoles()
-	SeedCategories()
+if err := CleanDatabase(); err != nil {
+	log.Printf("❌ Database cleanup failed: %v", err)
+	return
+}
 
-	// 2. Users
-	SeedUsers()
+// 1. Base data
+SeedRoles()
+SeedCategories()
 
-	// 3. Course structure
-	SeedCourses()
-	SeedCourseSections()
-	SeedLessons()
-	SeedFileMaterials()
+// 2. Users
+SeedUsers()
 
-	// 4. Learning data
-	SeedEnrollments()
-	SeedProgress()
+// 3. Course structure
+SeedCourses()
+SeedCourseSections()
+SeedLessons()
+SeedFileMaterials()
 
-	// 5. Social data
-	SeedReviews()
-	SeedComments()
+// 4. Learning data
+SeedEnrollments()
+SeedProgress()
 
-	// 6. Payment data
-	SeedPayments()
-	SeedPaymentLogs()
+// 5. Social data
+SeedReviews()
+SeedComments()
+
+// 6. Payment data
+SeedPayments()
+SeedPaymentLogs()
+
+log.Println("🎉 Database seeding completed successfully!")
+
 }

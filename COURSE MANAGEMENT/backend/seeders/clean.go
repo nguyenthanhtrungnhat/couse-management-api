@@ -8,7 +8,7 @@ import (
 	"course-management/config"
 )
 
-func CleanDatabase() {
+func CleanDatabase() error {
 	tables := []string{
 		"payment_logs",
 		"payments",
@@ -31,13 +31,14 @@ func CleanDatabase() {
 		query := fmt.Sprintf(`DELETE FROM "%s"`, table)
 
 		if _, err := config.DB.Exec(ctx, query); err != nil {
-			log.Printf("❌ Failed to clean %s: %v", table, err)
-			return
+			return fmt.Errorf("failed to clean table %s: %w", table, err)
 		}
 
 		log.Printf("🧹 Cleaned: %s", table)
 	}
 
 	log.Println("✅ Database cleaned successfully")
-}
 
+	return nil
+
+}

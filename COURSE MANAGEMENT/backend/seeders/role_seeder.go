@@ -1,24 +1,42 @@
 package seeders
 
 import (
-	"course-management/config"
-	"course-management/models"
+"context"
+"log"
+
+
+"course-management/config"
+
+
 )
 
 func SeedRoles() {
-	var count int64
+ctx := context.Background()
 
-	config.DB.Model(&models.Role{}).Count(&count)
 
-	if count > 0 {
-		return
+roles := []string{
+	"admin",
+	"student",
+	"instructor",
+}
+
+for _, role := range roles {
+	_, err := config.DB.Exec(
+		ctx,
+		`INSERT INTO roles
+			(id, name, created_at, updated_at)
+		 VALUES
+			(gen_random_uuid(), $1, NOW(), NOW())`,
+		role,
+	)
+
+	if err != nil {
+		log.Printf("❌ Failed to seed role %s: %v", role, err)
+		continue
 	}
 
-	roles := []models.Role{
-		{Name: "admin"},
-		{Name: "student"},
-		{Name: "instructor"},
-	}
+	log.Printf("✅ Role: %s", role)
+}
 
-	config.DB.Create(&roles)
+
 }
