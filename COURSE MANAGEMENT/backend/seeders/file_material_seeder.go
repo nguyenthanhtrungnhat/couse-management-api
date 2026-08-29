@@ -1,87 +1,93 @@
+
 package seeders
 
 import (
-	"errors"
+	"context"
 	"log"
 
 	"course-management/config"
-	"course-management/models"
 
-	"gorm.io/gorm"
+	"github.com/google/uuid"
 )
 
 func SeedFileMaterials() {
-	var lessons []models.Lesson
+	ctx := context.Background()
 
-	if err := config.DB.Find(&lessons).Error; err != nil {
-		log.Println("❌ Cannot load lessons:", err)
+	rows, err := config.DB.Query(
+		ctx,
+		`SELECT id FROM lessons ORDER BY created_at ASC`,
+	)
+	if err != nil {
+		log.Printf("❌ Cannot load lessons: %v", err)
 		return
 	}
+	defer rows.Close()
 
-	for _, lesson := range lessons {
+	for rows.Next() {
+		var lessonID uuid.UUID
 
-		materials := []models.FileMaterial{
+		if err := rows.Scan(&lessonID); err != nil {
+			log.Printf("❌ Cannot read lesson ID: %v", err)
+			continue
+		}
+
+		materials := []struct {
+			fileName string
+			fileURL  string
+			fileType string
+			fileSize int64
+		}{
 			{
-				LessonID: lesson.ID,
-				FileName: "lesson-notes.pdf",
-				FileURL:  "https://example.com/files/lesson-notes.pdf",
-				FileType: "application/pdf",
-				FileSize: 102400,
+				fileName: "lesson-notes.pdf",
+				fileURL:  "https://example.com/files/lesson-notes.pdf",
+				fileType: "application/pdf",
+				fileSize: 102400,
 			},
 			{
-				LessonID: lesson.ID,
-				FileName: "source-code.zip",
-				FileURL:  "https://example.com/files/source-code.zip",
-				FileType: "application/zip",
-				FileSize: 204800,
+				fileName: "source-code.zip",
+				fileURL:  "https://example.com/files/source-code.zip",
+				fileType: "application/zip",
+				fileSize: 204800,
 			},
 		}
 
 		for _, material := range materials {
-
-			var existing models.FileMaterial
-
-			err := config.DB.
-				Where(
-					"lesson_id = ? AND file_name = ?",
-					material.LessonID,
-					material.FileName,
-				).
-				First(&existing).Error
-
-			// Material already exists
-			if err == nil {
-				log.Printf(
-					"⏭️ Material already exists: %s",
-					material.FileName,
+			_, err := config.DB.Exec(
+				ctx,
+				`INSERT INTO file_materials (
+					id,
+					lesson_id,
+					file_name,
+					file_url,
+					file_type,
+					file_size,
+					created_at,
+					updated_at
 				)
-				continue
-			}
+				VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
+				uuid.New(),
+				lessonID,
+				material.fileName,
+				material.fileURL,
+				material.fileType,
+				material.fileSize,
+			)
 
-			// Unexpected database error
-			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				log.Printf(
-					"❌ Check material %s: %v",
-					material.FileName,
-					err,
-				)
-				continue
-			}
-
-			// Material does not exist → create
-			if err := config.DB.Create(&material).Error; err != nil {
+			if err != nil {
 				log.Printf(
 					"❌ Material %s: %v",
-					material.FileName,
+					material.fileName,
 					err,
 				)
 				continue
 			}
 
-			log.Printf(
-				"✅ Material created: %s",
-				material.FileName,
-			)
+			log.Printf("✅ Material: %s", material.fileName)
 		}
 	}
+
+	if err := rows.Err(); err != nil {
+		log.Printf("❌ Lesson iteration error: %v", err)
+	}
 }
+

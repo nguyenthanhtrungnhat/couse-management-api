@@ -1,97 +1,105 @@
+
 package seeders
 
 import (
-	"errors"
+	"context"
 	"log"
 
 	"course-management/config"
-	"course-management/models"
 
-	"gorm.io/gorm"
+	"github.com/google/uuid"
 )
 
 func SeedLessons() {
-	var sections []models.CourseSection
+	ctx := context.Background()
 
-	if err := config.DB.Find(&sections).Error; err != nil {
-		log.Println("❌ Cannot load sections:", err)
+	rows, err := config.DB.Query(
+		ctx,
+		`SELECT id FROM course_sections ORDER BY created_at ASC`,
+	)
+	if err != nil {
+		log.Printf("❌ Cannot load sections: %v", err)
 		return
 	}
+	defer rows.Close()
 
-	for _, section := range sections {
+	for rows.Next() {
+		var sectionID uuid.UUID
 
-		lessons := []models.Lesson{
+		if err := rows.Scan(&sectionID); err != nil {
+			log.Printf("❌ Cannot read section ID: %v", err)
+			continue
+		}
+
+		lessons := []struct {
+			title           string
+			videoURL        string
+			durationSeconds int
+			isPreview       bool
+			sortOrder       int
+		}{
 			{
-				SectionID:       section.ID,
-				Title:           "Getting Started",
-				VideoURL:        "https://example.com/videos/getting-started.mp4",
-				DurationSeconds: 600,
-				IsPreview:       true,
-				SortOrder:       1,
+				title:           "Getting Started",
+				videoURL:        "https://example.com/videos/getting-started.mp4",
+				durationSeconds: 600,
+				isPreview:       true,
+				sortOrder:       1,
 			},
 			{
-				SectionID:       section.ID,
-				Title:           "Understanding the Basics",
-				VideoURL:        "https://example.com/videos/basics.mp4",
-				DurationSeconds: 900,
-				IsPreview:       false,
-				SortOrder:       2,
+				title:           "Understanding the Basics",
+				videoURL:        "https://example.com/videos/basics.mp4",
+				durationSeconds: 900,
+				isPreview:       false,
+				sortOrder:       2,
 			},
 			{
-				SectionID:       section.ID,
-				Title:           "Building a Practical Example",
-				VideoURL:        "https://example.com/videos/practical.mp4",
-				DurationSeconds: 1200,
-				IsPreview:       false,
-				SortOrder:       3,
+				title:           "Building a Practical Example",
+				videoURL:        "https://example.com/videos/practical.mp4",
+				durationSeconds: 1200,
+				isPreview:       false,
+				sortOrder:       3,
 			},
 		}
 
 		for _, lesson := range lessons {
-
-			var existing models.Lesson
-
-			err := config.DB.
-				Where(
-					"section_id = ? AND title = ?",
-					lesson.SectionID,
-					lesson.Title,
-				).
-				First(&existing).Error
-
-			// Lesson already exists
-			if err == nil {
-				log.Printf(
-					"⏭️ Lesson already exists: %s",
-					lesson.Title,
+			_, err := config.DB.Exec(
+				ctx,
+				`INSERT INTO lessons (
+					id,
+					section_id,
+					title,
+					video_url,
+					duration_seconds,
+					is_preview,
+					sort_order,
+					created_at,
+					updated_at
 				)
-				continue
-			}
+				VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`,
+				uuid.New(),
+				sectionID,
+				lesson.title,
+				lesson.videoURL,
+				lesson.durationSeconds,
+				lesson.isPreview,
+				lesson.sortOrder,
+			)
 
-			// Unexpected database error
-			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				log.Printf(
-					"❌ Check lesson %s: %v",
-					lesson.Title,
-					err,
-				)
-				continue
-			}
-
-			// Lesson does not exist → create
-			if err := config.DB.Create(&lesson).Error; err != nil {
+			if err != nil {
 				log.Printf(
 					"❌ Lesson %s: %v",
-					lesson.Title,
+					lesson.title,
 					err,
 				)
 				continue
 			}
 
-			log.Printf(
-				"✅ Lesson created: %s",
-				lesson.Title,
-			)
+			log.Printf("✅ Lesson: %s", lesson.title)
 		}
 	}
+
+	if err := rows.Err(); err != nil {
+		log.Printf("❌ Section iteration error: %v", err)
+	}
 }
+

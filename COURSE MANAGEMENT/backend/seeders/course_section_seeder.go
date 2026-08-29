@@ -1,88 +1,87 @@
+
 package seeders
 
 import (
-	"errors"
+	"context"
 	"log"
 
 	"course-management/config"
-	"course-management/models"
 
-	"gorm.io/gorm"
+	"github.com/google/uuid"
 )
 
 func SeedCourseSections() {
-	var courses []models.Course
+	ctx := context.Background()
 
-	if err := config.DB.Find(&courses).Error; err != nil {
-		log.Println("❌ Cannot load courses:", err)
+	rows, err := config.DB.Query(
+		ctx,
+		`SELECT id FROM courses ORDER BY created_at ASC`,
+	)
+	if err != nil {
+		log.Printf("❌ Cannot load courses: %v", err)
 		return
 	}
+	defer rows.Close()
 
-	for _, course := range courses {
+	for rows.Next() {
+		var courseID uuid.UUID
 
-		sections := []models.CourseSection{
+		if err := rows.Scan(&courseID); err != nil {
+			log.Printf("❌ Cannot read course ID: %v", err)
+			continue
+		}
+
+		sections := []struct {
+			title     string
+			sortOrder int
+		}{
 			{
-				CourseID:  course.ID,
-				Title:     "Introduction",
-				SortOrder: 1,
+				title:     "Introduction",
+				sortOrder: 1,
 			},
 			{
-				CourseID:  course.ID,
-				Title:     "Core Concepts",
-				SortOrder: 2,
+				title:     "Core Concepts",
+				sortOrder: 2,
 			},
 			{
-				CourseID:  course.ID,
-				Title:     "Practical Project",
-				SortOrder: 3,
+				title:     "Practical Project",
+				sortOrder: 3,
 			},
 		}
 
 		for _, section := range sections {
-
-			var existing models.CourseSection
-
-			err := config.DB.
-				Where(
-					"course_id = ? AND title = ?",
-					section.CourseID,
-					section.Title,
-				).
-				First(&existing).Error
-
-			// Already exists → skip
-			if err == nil {
-				log.Printf(
-					"⏭️ Section already exists: %s",
-					section.Title,
+			_, err := config.DB.Exec(
+				ctx,
+				`INSERT INTO course_sections (
+					id,
+					course_id,
+					title,
+					sort_order,
+					created_at,
+					updated_at
 				)
-				continue
-			}
+				VALUES ($1, $2, $3, $4, NOW(), NOW())`,
+				uuid.New(),
+				courseID,
+				section.title,
+				section.sortOrder,
+			)
 
-			// Unexpected database error
-			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				log.Printf(
-					"❌ Check section %s: %v",
-					section.Title,
-					err,
-				)
-				continue
-			}
-
-			// Not found → create
-			if err := config.DB.Create(&section).Error; err != nil {
+			if err != nil {
 				log.Printf(
 					"❌ Section %s: %v",
-					section.Title,
+					section.title,
 					err,
 				)
 				continue
 			}
 
-			log.Printf(
-				"✅ Section created: %s",
-				section.Title,
-			)
+			log.Printf("✅ Section: %s", section.title)
 		}
 	}
+
+	if err := rows.Err(); err != nil {
+		log.Printf("❌ Course iteration error: %v", err)
+	}
 }
+
