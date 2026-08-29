@@ -1,41 +1,75 @@
 package seeders
 
 import (
-	"course-management/config"
-	"course-management/models"
+	"context"
 	"log"
+
+	"course-management/config"
+
+	"github.com/google/uuid"
 )
 
 func SeedPaymentLogs() {
-	var payment models.Payment
+	ctx := context.Background()
 
-	if err := config.DB.
-		Where("transaction_code = ?", "DEMO-TXN-0001").
-		First(&payment).Error; err != nil {
+	rows, err := config.DB.Query(
+		ctx,
+		`SELECT id, transaction_code, status
+		 FROM payments
+		 ORDER BY created_at ASC`,
+	)
+	if err != nil {
+		log.Printf("❌ Cannot load payments: %v", err)
 		return
 	}
+	defer rows.Close()
 
-	var existing models.PaymentLog
+	for rows.Next() {
+		var (
+			paymentID       uuid.UUID
+			transactionCode string
+			status          string
+		)
 
-	if err := config.DB.
-		Where("payment_id = ?", payment.ID).
-		First(&existing).Error; err == nil {
-		return
+		if err := rows.Scan(
+			&paymentID,
+			&transactionCode,
+			&status,
+		); err != nil {
+			log.Printf("❌ Cannot read payment: %v", err)
+			continue
+		}
+
+		rawResponse := []byte(`{
+			"transaction_code": "` + transactionCode + `",
+			"status": "` + status + `",
+			"source": "seed"
+		}`)
+
+		_, err := config.DB.Exec(
+			ctx,
+			`INSERT INTO payment_logs (
+				id,
+				payment_id,
+				raw_response,
+				created_at
+			)
+			VALUES ($1, $2, $3::jsonb, NOW())`,
+			uuid.New(),
+			paymentID,
+			rawResponse,
+		)
+
+		if err != nil {
+			log.Printf("❌ Payment log: %v", err)
+			continue
+		}
+
+		log.Printf("✅ Payment log for payment: %s", paymentID)
 	}
 
-	logEntry := models.PaymentLog{
-		PaymentID: payment.ID,
-		RawResponse: `{
-			"transaction_code": "DEMO-TXN-0001",
-			"status": "success",
-			"message": "Demo payment"
-		}`,
+	if err := rows.Err(); err != nil {
+		log.Printf("❌ Payment iteration error: %v", err)
 	}
-
-	if err := config.DB.Create(&logEntry).Error; err != nil {
-		log.Printf("❌ Payment log: %v", err)
-		return
-	}
-
-	log.Println("✅ Payment log created")
 }
+
