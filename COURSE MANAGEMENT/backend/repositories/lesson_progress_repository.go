@@ -48,7 +48,7 @@ func (r *lessonProgressRepository) FindByEnrollmentAndLesson(
 			watched_seconds,
 			created_at,
 			updated_at
-		FROM lesson_progress
+		FROM lesson_progresses
 		WHERE enrollment_id = $1
 		  AND lesson_id = $2
 		LIMIT 1
@@ -85,7 +85,7 @@ func (r *lessonProgressRepository) Create(
 ) error {
 
 	query := `
-		INSERT INTO lesson_progress (
+		INSERT INTO lesson_progresses (
 			id,
 			enrollment_id,
 			lesson_id,
@@ -117,7 +117,7 @@ func (r *lessonProgressRepository) Update(
 ) error {
 
 	query := `
-		UPDATE lesson_progress
+		UPDATE lesson_progresses
 		SET
 			completed = $1,
 			watched_seconds = $2,
@@ -158,7 +158,7 @@ func (r *lessonProgressRepository) FindByEnrollment(
 			watched_seconds,
 			created_at,
 			updated_at
-		FROM lesson_progress
+		FROM lesson_progresses
 		WHERE enrollment_id = $1
 		ORDER BY created_at ASC
 	`

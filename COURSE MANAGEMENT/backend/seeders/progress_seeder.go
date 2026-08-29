@@ -85,7 +85,7 @@ func SeedProgress() {
 
 			_, err := config.DB.Exec(
 				ctx,
-				`INSERT INTO lesson_progress (
+				`INSERT INTO lesson_progresses (
 					id,
 					user_id,
 					lesson_id,
