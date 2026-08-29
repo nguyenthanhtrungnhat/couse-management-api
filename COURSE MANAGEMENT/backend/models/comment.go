@@ -5,19 +5,13 @@ import "github.com/google/uuid"
 type Comment struct {
 	BaseModel
 
-	UserID uuid.UUID `gorm:"type:uuid;index;not null"`
+	UserID   uuid.UUID `json:"user_id"`
+	CourseID uuid.UUID `json:"course_id"`
+	ParentID *uuid.UUID `json:"parent_id,omitempty"`
 
-	CourseID uuid.UUID `gorm:"type:uuid;index;not null"`
+	User   User    `json:"user,omitempty"`
+	Course Course  `json:"course,omitempty"`
+	Parent *Comment `json:"parent,omitempty"`
 
-	ParentID *uuid.UUID `gorm:"type:uuid;index"`
-
-	User User
-
-	Course Course
-
-	Parent *Comment `gorm:"foreignKey:ParentID"`
-
-	Content string
-
-	Replies []Comment `gorm:"foreignKey:ParentID"`
+	Content string `json:"content"`
 }

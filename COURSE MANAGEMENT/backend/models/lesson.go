@@ -1,20 +1,18 @@
 package models
 
-import (
-	"github.com/google/uuid"
-)
+import "github.com/google/uuid"
 
 type Lesson struct {
 	BaseModel
 
-	SectionID uuid.UUID     `gorm:"type:uuid;not null;index"`
-	Section   CourseSection `gorm:"foreignKey:SectionID"`
+	SectionID uuid.UUID     `json:"section_id"`
+	Section   CourseSection `json:"section,omitempty"`
 
-	Title           string `gorm:"size:255;not null"`
-	VideoURL        string `gorm:"type:text;not null"`
-	DurationSeconds int    `gorm:"not null;default:0"`
-	IsPreview       bool   `gorm:"not null;default:false"`
-	SortOrder       int    `gorm:"not null;default:0"`
+	Title           string `json:"title"`
+	VideoURL        string `json:"video_url"`
+	DurationSeconds int    `json:"duration_seconds"`
+	IsPreview       bool   `json:"is_preview"`
+	SortOrder       int    `json:"sort_order"`
 
-	FileMaterials []FileMaterial `gorm:"foreignKey:LessonID"`
+	FileMaterials []FileMaterial `json:"file_materials,omitempty"`
 }

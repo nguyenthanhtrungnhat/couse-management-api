@@ -3,7 +3,7 @@ package models
 type Role struct {
 	BaseModel
 
-	Name string `gorm:"size:50;uniqueIndex;not null"`
+	Name string `json:"name"`
 
-	Users []User `gorm:"foreignKey:RoleID"`
+	Users []User `json:"users,omitempty"`
 }

@@ -3,9 +3,8 @@ package models
 type Category struct {
 	BaseModel
 
-	Name string `gorm:"size:100;not null"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
 
-	Description *string
-
-	Courses []Course `gorm:"foreignKey:CategoryID"`
+	Courses []Course `json:"courses,omitempty"`
 }

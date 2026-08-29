@@ -5,9 +5,8 @@ import "github.com/google/uuid"
 type PaymentLog struct {
 	BaseModel
 
-	PaymentID uuid.UUID `gorm:"type:uuid;index;not null"`
+	PaymentID uuid.UUID `json:"payment_id"`
+	Payment   Payment  `json:"payment,omitempty"`
 
-	Payment Payment
-
-	RawResponse string `gorm:"type:jsonb"`
+	RawResponse string `json:"raw_response"`
 }

@@ -5,13 +5,11 @@ import "github.com/google/uuid"
 type Enrollment struct {
 	BaseModel
 
-	UserID uuid.UUID `gorm:"type:uuid;uniqueIndex:idx_user_course;not null"`
+	UserID   uuid.UUID `json:"user_id"`
+	CourseID uuid.UUID `json:"course_id"`
 
-	CourseID uuid.UUID `gorm:"type:uuid;uniqueIndex:idx_user_course;not null"`
+	User   User   `json:"user,omitempty"`
+	Course Course `json:"course,omitempty"`
 
-	User User
-
-	Course Course
-
-	Progress []LessonProgress
+	Progress []LessonProgress `json:"progress,omitempty"`
 }

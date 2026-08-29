@@ -5,18 +5,14 @@ import "github.com/google/uuid"
 type User struct {
 	BaseModel
 
-	RoleID uuid.UUID `gorm:"type:uuid;index;not null"`
-	Role   Role
+	RoleID uuid.UUID `json:"role_id"`
+	Role   Role      `json:"role,omitempty"`
 
-	FullName string `gorm:"size:255;not null"`
+	FullName     string  `json:"full_name"`
+	Email        string  `json:"email"`
+	PasswordHash *string `json:"-"`
+	AvatarURL    *string `json:"avatar_url,omitempty"`
+	Provider     string  `json:"provider"`
 
-	Email string `gorm:"size:255;uniqueIndex;not null"`
-
-	PasswordHash *string
-
-	AvatarURL *string
-
-	Provider string `gorm:"size:20;default:local"`
-
-	Courses []Course `gorm:"foreignKey:InstructorID"`
+	Courses []Course `json:"courses,omitempty"`
 }

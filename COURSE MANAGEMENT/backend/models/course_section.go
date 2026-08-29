@@ -5,12 +5,11 @@ import "github.com/google/uuid"
 type CourseSection struct {
 	BaseModel
 
-	CourseID uuid.UUID `gorm:"type:uuid;index;not null"`
-	Course   Course
+	CourseID uuid.UUID `json:"course_id"`
+	Course   Course   `json:"course,omitempty"`
 
-	Title string `gorm:"size:255;not null"`
+	Title     string `json:"title"`
+	SortOrder int    `json:"sort_order"`
 
-	SortOrder int
-
-	Lessons []Lesson `gorm:"foreignKey:SectionID"`
+	Lessons []Lesson `json:"lessons,omitempty"`
 }

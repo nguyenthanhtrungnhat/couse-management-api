@@ -1,17 +1,15 @@
 package models
 
-import (
-	"github.com/google/uuid"
-)
+import "github.com/google/uuid"
 
 type FileMaterial struct {
 	BaseModel
 
-	LessonID uuid.UUID `gorm:"type:uuid;not null;index"`
-	Lesson   Lesson    `gorm:"foreignKey:LessonID"`
+	LessonID uuid.UUID `json:"lesson_id"`
+	Lesson   Lesson   `json:"lesson,omitempty"`
 
-	FileName string `gorm:"size:255;not null"`
-	FileURL  string `gorm:"type:text;not null"`
-	FileType string `gorm:"size:100"`
-	FileSize int64  `gorm:"not null;default:0"`
+	FileName string `json:"file_name"`
+	FileURL  string `json:"file_url"`
+	FileType string `json:"file_type"`
+	FileSize int64  `json:"file_size"`
 }

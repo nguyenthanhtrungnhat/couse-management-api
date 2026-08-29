@@ -5,31 +5,23 @@ import "github.com/google/uuid"
 type Course struct {
 	BaseModel
 
-	InstructorID uuid.UUID `gorm:"type:uuid;index;not null" json:"instructor_id"`
-	Instructor   User      `json:"instructor"`
+	InstructorID uuid.UUID `json:"instructor_id"`
+	Instructor   User      `json:"instructor,omitempty"`
 
-	CategoryID uuid.UUID `gorm:"type:uuid;index;not null" json:"category_id"`
-	Category   Category  `json:"category"`
+	CategoryID uuid.UUID `json:"category_id"`
+	Category   Category  `json:"category,omitempty"`
 
-	Title string `gorm:"size:255;not null" json:"title"`
-
-	Slug string `gorm:"size:255;uniqueIndex;not null" json:"slug"`
-
-	Description *string `json:"description"`
-
-	ThumbnailURL *string `json:"thumbnail_url"`
-
+	Title           string  `json:"title"`
+	Slug            string  `json:"slug"`
+	Description     *string `json:"description"`
+	ThumbnailURL    *string `json:"thumbnail_url"`
 	PreviewVideoURL *string `json:"preview_video_url"`
 
-	Price float64 `gorm:"type:numeric(12,2);default:0" json:"price"`
+	Price         float64 `json:"price"`
+	Status        string  `json:"status"`
+	AverageRating float64 `json:"average_rating"`
+	TotalStudents int     `json:"total_students"`
 
-	Status string `gorm:"size:20;default:draft" json:"status"`
-
-	AverageRating float64 `gorm:"type:numeric(3,2);default:0" json:"average_rating"`
-
-	TotalStudents int `gorm:"default:0" json:"total_students"`
-
-	Sections []CourseSection `gorm:"foreignKey:CourseID" json:"sections"`
-
-	Reviews []Review `gorm:"foreignKey:CourseID" json:"reviews"`
+	Sections []CourseSection `json:"sections,omitempty"`
+	Reviews  []Review        `json:"reviews,omitempty"`
 }

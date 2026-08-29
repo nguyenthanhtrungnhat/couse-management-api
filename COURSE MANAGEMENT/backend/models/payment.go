@@ -5,21 +5,16 @@ import "github.com/google/uuid"
 type Payment struct {
 	BaseModel
 
-	UserID uuid.UUID `gorm:"type:uuid;index;not null"`
+	UserID   uuid.UUID `json:"user_id"`
+	CourseID uuid.UUID `json:"course_id"`
 
-	CourseID uuid.UUID `gorm:"type:uuid;index;not null"`
+	User   User   `json:"user,omitempty"`
+	Course Course `json:"course,omitempty"`
 
-	User User
+	Amount          float64 `json:"amount"`
+	BankName        string  `json:"bank_name"`
+	TransactionCode string  `json:"transaction_code"`
+	Status          string  `json:"status"`
 
-	Course Course
-
-	Amount float64 `gorm:"type:numeric(12,2)"`
-
-	BankName string `gorm:"size:100"`
-
-	TransactionCode string `gorm:"size:255;uniqueIndex"`
-
-	Status string `gorm:"size:20"`
-
-	Logs []PaymentLog `gorm:"foreignKey:PaymentID"`
+	Logs []PaymentLog `json:"logs,omitempty"`
 }

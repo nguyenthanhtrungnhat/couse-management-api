@@ -5,15 +5,12 @@ import "github.com/google/uuid"
 type Review struct {
 	BaseModel
 
-	UserID uuid.UUID `gorm:"type:uuid;index;not null"`
+	UserID   uuid.UUID `json:"user_id"`
+	CourseID uuid.UUID `json:"course_id"`
 
-	CourseID uuid.UUID `gorm:"type:uuid;index;not null"`
+	User   User   `json:"user,omitempty"`
+	Course Course `json:"course,omitempty"`
 
-	User User
-
-	Course Course
-
-	Rating int
-
-	Comment string
+	Rating  int    `json:"rating"`
+	Comment string `json:"comment"`
 }
