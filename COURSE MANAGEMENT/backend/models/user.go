@@ -1,9 +1,7 @@
 
 package models
 
-import (
-	"github.com/google/uuid"
-)
+import "github.com/google/uuid"
 
 type User struct {
 	BaseModel
@@ -16,7 +14,7 @@ type User struct {
 	AvatarURL    *string `json:"avatar_url,omitempty"`
 	Provider     string  `json:"provider"`
 
-	Role *Role `json:"role,omitempty"`
+	Role Role `json:"role,omitempty"`
 }
 
 // TableName returns the database table name.

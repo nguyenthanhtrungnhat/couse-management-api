@@ -88,7 +88,7 @@ func (s *courseSectionService) CreateSection(
 	newSection := &models.CourseSection{
 		CourseID:  courseID,
 		Title:     title,
-		SortOrder: req.SortOrder,
+		SortOrder: int64(req.SortOrder),
 	}
 
 	if err := s.sectionRepository.Create(newSection); err != nil {
@@ -227,7 +227,7 @@ func mapSectionToResponse(
 		ID:        model.ID.String(),
 		CourseID:  model.CourseID.String(),
 		Title:     model.Title,
-		SortOrder: model.SortOrder,
+		SortOrder: int(model.SortOrder),
 		CreatedAt: model.CreatedAt,
 		UpdatedAt: model.UpdatedAt,
 	}

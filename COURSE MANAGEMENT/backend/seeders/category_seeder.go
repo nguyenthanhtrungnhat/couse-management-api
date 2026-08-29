@@ -18,23 +18,23 @@ ctx := context.Background()
 categories := []models.Category{
 	{
 		Name:        "Programming",
-		Description: stringPtr("Programming and software development"),
+		Description: "Programming and software development",
 	},
 	{
 		Name:        "Web Development",
-		Description: stringPtr("Frontend, backend and full-stack web development"),
+		Description: "Frontend, backend and full-stack web development",
 	},
 	{
 		Name:        "Database",
-		Description: stringPtr("SQL, PostgreSQL and database management"),
+		Description: "SQL, PostgreSQL and database management",
 	},
 	{
 		Name:        "DevOps",
-		Description: stringPtr("Deployment, Docker, cloud and DevOps"),
+		Description: "Deployment, Docker, cloud and DevOps",
 	},
 	{
 		Name:        "Mobile Development",
-		Description: stringPtr("Mobile application development"),
+		Description: "Mobile application development",
 	},
 }
 

@@ -177,10 +177,12 @@ func (s *fileMaterialService) CreateMaterial(
 
 		FileName: file.Filename,
 
-		FileURL: fmt.Sprintf(
-			"/uploads/materials/%s",
-			filename,
-		),
+		fileURL := fmt.Sprintf(
+	"/uploads/materials/%s",
+	filename,
+)
+
+fileType := ext
 
 		FileSize: file.Size,
 

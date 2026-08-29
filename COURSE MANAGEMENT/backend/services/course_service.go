@@ -443,7 +443,7 @@ func mapCourseToResponse(
 		Status:        c.Status,
 		Price:         c.Price,
 		AverageRating: c.AverageRating,
-		TotalStudents: c.TotalStudents,
+		TotalStudents: int(c.TotalStudents),
 		CreatedAt:     c.CreatedAt,
 		UpdatedAt:     c.UpdatedAt,
 		Sections:      make([]section.SectionResponse, 0),
@@ -467,7 +467,7 @@ func mapCourseToResponse(
 			ID:        sectionModel.ID.String(),
 			CourseID:  sectionModel.CourseID.String(),
 			Title:     sectionModel.Title,
-			SortOrder: sectionModel.SortOrder,
+			SortOrder: int(sectionModel.SortOrder),
 			CreatedAt: sectionModel.CreatedAt,
 			UpdatedAt: sectionModel.UpdatedAt,
 			Lessons:   make([]lesson.LessonResponse, 0),
@@ -479,10 +479,10 @@ func mapCourseToResponse(
 				ID:              lessonModel.ID.String(),
 				SectionID:       lessonModel.SectionID.String(),
 				Title:           lessonModel.Title,
-				VideoURL:        lessonModel.VideoURL,
-				DurationSeconds: lessonModel.DurationSeconds,
+				VideoURL:        stringValue(lessonModel.VideoURL),
+				DurationSeconds: int(lessonModel.DurationSeconds),
 				IsPreview:       lessonModel.IsPreview,
-				SortOrder:       lessonModel.SortOrder,
+				SortOrder:       int(lessonModel.SortOrder),
 				CreatedAt:       lessonModel.CreatedAt,
 				UpdatedAt:       lessonModel.UpdatedAt,
 			}
@@ -500,4 +500,11 @@ func mapCourseToResponse(
 	}
 
 	return response
+}
+func stringValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+
+	return *value
 }
