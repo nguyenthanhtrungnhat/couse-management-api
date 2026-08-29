@@ -8,7 +8,7 @@ import (
 	"course-management/repositories"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
+	"github.com/jackc/pgx/v5"
 )
 
 type LessonProgressService interface {
@@ -30,7 +30,7 @@ type LessonProgressService interface {
 }
 
 type lessonProgressService struct {
-	progressRepository  repositories.LessonProgressRepository
+	progressRepository   repositories.LessonProgressRepository
 	enrollmentRepository repositories.EnrollmentRepository
 	lessonRepository     repositories.LessonRepository
 	courseRepository     repositories.CourseRepository
@@ -62,7 +62,7 @@ func (s *lessonProgressService) UpdateProgress(
 
 	lesson, err := s.lessonRepository.FindByID(lessonID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("lesson not found")
 		}
 		return nil, err
@@ -73,7 +73,7 @@ func (s *lessonProgressService) UpdateProgress(
 		lesson.Section.CourseID,
 	)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("you are not enrolled in this course")
 		}
 		return nil, err
@@ -84,7 +84,7 @@ func (s *lessonProgressService) UpdateProgress(
 		lessonID,
 	)
 
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if errors.Is(err, pgx.ErrNoRows) {
 
 		newProgress := &models.LessonProgress{
 			EnrollmentID:   enrollment.ID,
@@ -121,7 +121,7 @@ func (s *lessonProgressService) GetLessonProgress(
 
 	lesson, err := s.lessonRepository.FindByID(lessonID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("lesson not found")
 		}
 		return nil, err
@@ -141,7 +141,7 @@ func (s *lessonProgressService) GetLessonProgress(
 	)
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("progress not found")
 		}
 
@@ -158,7 +158,7 @@ func (s *lessonProgressService) GetCourseProgress(
 
 	_, err := s.courseRepository.FindByID(courseID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("course not found")
 		}
 		return nil, err

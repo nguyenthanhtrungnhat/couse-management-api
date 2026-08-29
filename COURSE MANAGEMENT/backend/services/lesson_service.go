@@ -9,7 +9,7 @@ import (
 	"course-management/repositories"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
+	"github.com/jackc/pgx/v5"
 )
 
 type LessonService interface {
@@ -82,7 +82,7 @@ func (s *lessonService) CreateLesson(
 	section, err := s.sectionRepository.FindByID(sectionID)
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("section not found")
 		}
 
@@ -126,7 +126,7 @@ func (s *lessonService) GetLesson(
 	result, err := s.lessonRepository.FindByID(id)
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("lesson not found")
 		}
 
@@ -173,7 +173,7 @@ func (s *lessonService) UpdateLesson(
 	existing, err := s.lessonRepository.FindByID(id)
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("lesson not found")
 		}
 
@@ -234,7 +234,7 @@ func (s *lessonService) DeleteLesson(
 	existing, err := s.lessonRepository.FindByID(id)
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return errors.New("lesson not found")
 		}
 

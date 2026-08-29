@@ -8,7 +8,7 @@ import (
 	"course-management/utils"
 	"errors"
 
-	"gorm.io/gorm"
+	"github.com/jackc/pgx/v5"
 )
 
 type AuthService interface {
@@ -43,7 +43,7 @@ func (s *authService) Register(
 		return nil, constants.ErrEmailExists
 	}
 
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
+	if !errors.Is(err, pgx.ErrNoRows){
 		return nil, err
 	}
 
@@ -113,7 +113,7 @@ func (s *authService) Login(
 
 	if err != nil {
 
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, constants.ErrInvalidCredential
 		}
 

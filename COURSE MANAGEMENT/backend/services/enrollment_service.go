@@ -8,7 +8,7 @@ import (
 	"course-management/repositories"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
+	"github.com/jackc/pgx/v5"
 )
 
 type EnrollmentService interface {
@@ -41,7 +41,7 @@ func (s *enrollmentService) Enroll(
 	// Course must exist.
 	courseModel, err := s.courseRepository.FindByID(courseID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("course not found")
 		}
 
@@ -118,7 +118,7 @@ func (s *enrollmentService) GetEnrollmentByID(
 	item, err := s.enrollmentRepository.FindByID(enrollmentID)
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("enrollment not found")
 		}
 
@@ -146,7 +146,7 @@ func (s *enrollmentService) Unenroll(
 	item, err := s.enrollmentRepository.FindByID(enrollmentID)
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return errors.New("enrollment not found")
 		}
 

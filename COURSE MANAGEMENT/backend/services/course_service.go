@@ -12,7 +12,7 @@ import (
 	"course-management/repositories"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
+	"github.com/jackc/pgx/v5"
 )
 
 type CourseService interface {
@@ -65,7 +65,7 @@ func (s *courseService) CreateCourse(
 	// Check category.
 	_, err = s.categoryRepository.FindByID(categoryID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("category not found")
 		}
 
@@ -146,7 +146,7 @@ func (s *courseService) GetCourseByID(
 
 	courseModel, err := s.courseRepository.FindByID(id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("course not found")
 		}
 
@@ -171,7 +171,7 @@ func (s *courseService) GetCourseBySlug(
 
 	courseModel, err := s.courseRepository.FindBySlug(slug)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("course not found")
 		}
 
@@ -273,7 +273,7 @@ func (s *courseService) UpdateCourse(
 
 	courseModel, err := s.courseRepository.FindByID(courseID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("course not found")
 		}
 
@@ -332,7 +332,7 @@ func (s *courseService) UpdateCourse(
 
 		_, err = s.categoryRepository.FindByID(categoryID)
 		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
+			if errors.Is(err, pgx.ErrNoRows) {
 				return nil, errors.New("category not found")
 			}
 
@@ -384,7 +384,7 @@ func (s *courseService) DeleteCourse(
 
 	courseModel, err := s.courseRepository.FindByID(courseID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return errors.New("course not found")
 		}
 

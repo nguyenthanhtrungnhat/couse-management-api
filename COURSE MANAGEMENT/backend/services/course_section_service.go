@@ -9,7 +9,7 @@ import (
 	"course-management/repositories"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
+	"github.com/jackc/pgx/v5"
 )
 
 type CourseSectionService interface {
@@ -74,7 +74,7 @@ func (s *courseSectionService) CreateSection(
 	courseModel, err := s.courseRepository.FindByID(courseID)
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("course not found")
 		}
 
@@ -105,7 +105,7 @@ func (s *courseSectionService) GetSection(
 	result, err := s.sectionRepository.FindByID(id)
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows){
 			return nil, errors.New("section not found")
 		}
 
@@ -150,7 +150,7 @@ func (s *courseSectionService) UpdateSection(
 	existing, err := s.sectionRepository.FindByID(id)
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("section not found")
 		}
 
@@ -195,7 +195,7 @@ func (s *courseSectionService) DeleteSection(
 	existing, err := s.sectionRepository.FindByID(id)
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return errors.New("section not found")
 		}
 
