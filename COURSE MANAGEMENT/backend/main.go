@@ -5,7 +5,7 @@ import (
 
 	"course-management/config"
 	"course-management/routes"
-	"course-management/seeders"
+	//"course-management/seeders"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
@@ -22,7 +22,7 @@ func main() {
 	config.ConnectDatabase()
 
 	// Seed development data
-	seeders.SeedAll()
+	//seeders.SeedAll()
 
 	// Create Fiber application
 	app := fiber.New()
